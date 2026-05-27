@@ -10,7 +10,7 @@ type ToolCardProps = {
   title: string;
   description: string;
   href?: string;
-  color?: "pink" | "blue" | "green" | "yellow";
+  color: string;
   badge?: string;
   icon?: string;
 };
