@@ -4,7 +4,6 @@ import ToolCard from "../components/ToolCard";
 import { playgroundTools } from "../data/tools";
 
 export default function PlaygroundPage() {
-
   return (
     <main className="min-h-screen bg-black text-white p-10">
 

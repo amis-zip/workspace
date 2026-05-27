@@ -4,7 +4,6 @@ import ToolCard from "../components/ToolCard";
 import { faikerzTools } from "../data/tools";
 
 export default function FaikerzPage() {
-
   return (
     <main className="min-h-screen bg-black text-white p-10">
 

@@ -2,63 +2,67 @@ export const faikerzTools = [
   {
     title: "Recrawl Queue",
     description: "recrawling management tool",
-    href: "/recrawl_queue_v6.html",
+    href: "/",
     color: "pink",
     badge: "LIVE",
     icon: "radar",
   },
 
   {
-    title: "LG Innotek Detection",
-    description: "detection workflow tool",
-    href: "http://127.0.0.1:5555",
-    color: "yellow",
-    badge: "LOCAL",
+    title: "Security Center",
+    description: "internal security operations",
+    href: "/",
+    color: "red",
+    badge: "ACTIVE",
     icon: "shield",
   },
 
   {
-    title: "DEV Hoodie Vote",
-    description: "team hoodie voting system",
-    color: "blue",
-    badge: "COMING SOON",
+    title: "Incident Monitor",
+    description: "real-time issue tracking",
+    href: "/",
+    color: "orange",
+    badge: "24/7",
     icon: "flame",
-  },
-];
-
-export const playgroundTools = [
-  {
-    title: "Jummechu",
-    description: "lunch recommendation app",
-    href: "https://jummechu-five.vercel.app",
-    color: "green",
-    badge: "LIVE",
-    icon: "pizza",
   },
 ];
 
 export const labsTools = [
   {
-    title: "AI Utilities",
-    description: "experimental AI tools",
+    title: "Automation Lab",
+    description: "workflow experiments",
+    href: "/",
     color: "blue",
-    badge: "PROTOTYPE",
+    badge: "BETA",
     icon: "flask",
   },
 
   {
-    title: "Workflow Experiments",
-    description: "testing automation workflows",
-    color: "yellow",
-    badge: "WIP",
-    icon: "flask",
+    title: "Crawler Testing",
+    description: "testing scraping systems",
+    href: "/",
+    color: "cyan",
+    badge: "DEV",
+    icon: "radar",
+  },
+];
+
+export const playgroundTools = [
+  {
+    title: "Pizza Generator",
+    description: "fun internal demo",
+    href: "/",
+    color: "green",
+    badge: "FUN",
+    icon: "pizza",
   },
 
   {
-    title: "Automation Tests",
-    description: "internal experiment environment",
-    color: "pink",
-    badge: "SANDBOX",
+    title: "Sandbox",
+    description: "random side experiments",
+    href: "/",
+    color: "purple",
+    badge: "LAB",
     icon: "flask",
   },
 ];
