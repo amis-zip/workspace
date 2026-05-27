@@ -1,9 +1,21 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
 export default function RecrawlQueuePage() {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    if (iframeRef.current) {
+      iframeRef.current.src = "/recrawl_queue_v6.html";
+    }
+  }, []);
+
   return (
-    <main className="min-h-screen bg-black text-white flex items-center justify-center">
-      <h1 className="text-4xl font-bold">
-        Recrawl Queue
-      </h1>
-    </main>
+    <iframe
+      ref={iframeRef}
+      className="w-full h-screen border-0"
+      title="Recrawl Queue"
+    />
   );
 }

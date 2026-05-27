@@ -32,7 +32,7 @@ export default function FaikerzPage() {
               title={tool.title}
               description={tool.description}
               href={tool.href}
-              color={tool.color}
+              color={tool.color as "pink" | "orange" | "blue" | "green" | "yellow"}
               badge={tool.badge}
               icon={tool.icon}
             />
