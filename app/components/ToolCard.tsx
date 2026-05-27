@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import {
   Radar,
   Shield,
@@ -10,7 +12,7 @@ type ToolCardProps = {
   title: string;
   description: string;
   href?: string;
-  color?: string;
+  color: "pink" | "blue" | "green" | "yellow" | "orange";
   badge?: string;
   icon?: string;
 };
@@ -36,24 +38,20 @@ export default function ToolCard({
     ? icons[icon as keyof typeof icons]
     : null;
 
-  const colors: Record<string, string> = {
+  const colors = {
     pink: "hover:border-pink-500/60",
     blue: "hover:border-blue-500/60",
     green: "hover:border-green-500/60",
     yellow: "hover:border-yellow-500/60",
     orange: "hover:border-orange-500/60",
-    purple: "hover:border-purple-500/60",
-    red: "hover:border-red-500/60",
   };
 
-  const badgeColors: Record<string, string> = {
+  const badgeColors = {
     pink: "bg-pink-500/20 text-pink-300",
     blue: "bg-blue-500/20 text-blue-300",
     green: "bg-green-500/20 text-green-300",
     yellow: "bg-yellow-500/20 text-yellow-300",
     orange: "bg-orange-500/20 text-orange-300",
-    purple: "bg-purple-500/20 text-purple-300",
-    red: "bg-red-500/20 text-red-300",
   };
 
   const card = (
@@ -73,7 +71,7 @@ export default function ToolCard({
         hover:scale-[1.015]
         hover:-translate-y-1
         hover:shadow-[0_0_50px_rgba(255,255,255,0.12)]
-        ${colors[color] || colors.blue}
+        ${colors[color]}
       `}
     >
 
@@ -98,7 +96,7 @@ export default function ToolCard({
               px-2
               py-1
               rounded-full
-              ${badgeColors[color] || badgeColors.blue}
+              ${badgeColors[color]}
             `}
           >
             {badge}
@@ -114,7 +112,13 @@ export default function ToolCard({
     </div>
   );
 
-  if (href) {
+  if (!href) {
+    return card;
+  }
+
+  const isExternal = href.startsWith("http");
+
+  if (isExternal) {
     return (
       <a
         href={href}
@@ -126,5 +130,9 @@ export default function ToolCard({
     );
   }
 
-  return card;
+  return (
+    <Link href={href}>
+      {card}
+    </Link>
+  );
 }
