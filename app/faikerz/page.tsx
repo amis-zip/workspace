@@ -1,12 +1,11 @@
 import Navbar from "../components/Navbar";
 import ToolCard from "../components/ToolCard";
-
 import { faikerzTools } from "../data/tools";
 
 export default function FaikerzPage() {
   return (
     <main className="min-h-screen bg-black text-white p-10">
-
+      
       <Navbar />
 
       <div className="max-w-5xl mx-auto">
@@ -27,21 +26,17 @@ export default function FaikerzPage() {
         </p>
 
         <div className="grid gap-4">
-
           {faikerzTools.map((tool) => (
-
             <ToolCard
               key={tool.title}
               title={tool.title}
               description={tool.description}
-              href={typeof tool.href === "string" ? tool.href : "/"}
-              color={tool.color as any}
+              href={tool.href}
+              color={tool.color}
               badge={tool.badge}
               icon={tool.icon}
             />
-
           ))}
-
         </div>
 
       </div>
