@@ -1,26 +1,19 @@
 export default function LGInnotekPage() {
   return (
-    <main className="min-h-screen bg-black text-white p-10">
-
-      <h1 className="text-5xl font-bold mb-6">
-        LG Innotek Detection
-      </h1>
-
-      <p className="text-gray-400 mb-10">
-        internal python monitoring tool
-      </p>
-
-      <div className="space-y-4">
+    <main className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-5xl font-bold mb-6">
+          LG Innotek Detection
+        </h1>
 
         <a
-          href="/downloads/lginnotek_v8.zip"
-          className="inline-block px-6 py-3 rounded-xl bg-orange-500 text-black font-semibold"
+          href="https://lg-innotek-tool.vercel.app"
+          target="_blank"
+          className="px-6 py-3 rounded-xl bg-orange-500 hover:bg-orange-400 transition"
         >
-          Download Windows Version
+          Open Tool
         </a>
-
       </div>
-
     </main>
   );
 }

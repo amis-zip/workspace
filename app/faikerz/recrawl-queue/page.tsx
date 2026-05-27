@@ -1,8 +1,9 @@
 export default function RecrawlQueuePage() {
   return (
-    <iframe
-      src="/recrawl_queue_v6.html"
-      className="w-full h-screen border-0 bg-black"
-    />
+    <main className="min-h-screen bg-black text-white flex items-center justify-center">
+      <h1 className="text-4xl font-bold">
+        Recrawl Queue
+      </h1>
+    </main>
   );
 }
