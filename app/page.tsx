@@ -33,7 +33,7 @@ export default function Home() {
                 description="internal operations & tools"
                 color="pink"
                 badge="LIVE"
-                icon=""
+                icon="shield"
               />
             </div>
           </Link>
@@ -44,7 +44,7 @@ export default function Home() {
                 title="LABS"
                 description="experiments & automation"
                 color="blue"
-                icon=""
+                icon="flask"
               />
             </div>
           </Link>
@@ -55,7 +55,7 @@ export default function Home() {
                 title="PLAYGROUND"
                 description="fun projects & side apps"
                 color="green"
-                icon=""
+                icon="pizza"
               />
             </div>
           </Link>

@@ -34,7 +34,7 @@ export default function FaikerzPage() {
               key={tool.title}
               title={tool.title}
               description={tool.description}
-              href={tool.href}
+              href={typeof tool.href === "string" ? tool.href : "/"}
               color={tool.color as any}
               badge={tool.badge}
               icon={tool.icon}
