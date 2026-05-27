@@ -123,8 +123,8 @@ export default function CommandMenu() {
       key={tool.title}
       value={tool.title.toLowerCase()}
       onSelect={() => {
-        if ("href" in tool && tool.href) {
-         runCommand(tool.href);
+        if ("href" in tool && typeof tool.href === "string") {
+         runCommand(tool.href as string);
         }
       }}
       className="
