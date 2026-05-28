@@ -62,6 +62,7 @@ export default function CatCard({
       `}
     >
       <div className="relative aspect-[0.92] bg-black overflow-hidden">
+
         <img
           src={cat.image}
           alt={cat.name}
@@ -92,10 +93,13 @@ export default function CatCard({
             <Check className="w-4 h-4" />
           </div>
         )}
+
       </div>
 
       <div className="p-4 pb-5">
+
         <div className="flex items-center justify-between gap-3">
+
           <h2 className="text-lg md:text-xl font-semibold text-white">
             {cat.name}
           </h2>
@@ -105,12 +109,15 @@ export default function CatCard({
               Selected
             </span>
           )}
+
         </div>
 
         <p className="mt-1 text-[11px] text-zinc-400">
           {cat.tagline}
         </p>
+
       </div>
+
     </button>
   );
 }

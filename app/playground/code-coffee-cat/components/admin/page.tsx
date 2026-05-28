@@ -2,72 +2,111 @@
 
 import { useEffect, useState } from "react";
 
-import Navbar from "@/app/components/Navbar";
+import { supabase } from "@/lib/supabase";
 
-import RankingBoard from "@/app/playground/code-coffee-cat/components/ranking-board";
-
-import { initialCats } from "@/app/playground/code-coffee-cat/data";
-import { CatVariant } from "@/app/playground/code-coffee-cat/types";
-const STORAGE_KEY = "code-coffee-cat-votes-v2";
+type Vote = {
+  mascot_ids: string[];
+  apparel_types: string[];
+};
 
 export default function AdminPage() {
-  const [cats, setCats] =
-    useState<CatVariant[]>(initialCats);
+  const [votes, setVotes] = useState<Vote[]>([]);
 
   useEffect(() => {
-    const saved =
-      localStorage.getItem(STORAGE_KEY);
-
-    if (saved) {
-      setCats(JSON.parse(saved));
-    }
+    fetchVotes();
   }, []);
 
-  return (
-    <main className="min-h-screen bg-black text-white px-6 py-10">
+  const fetchVotes = async () => {
+    const { data } = await supabase
+      .from("votes")
+      .select("*");
 
-      <Navbar />
+    if (data) {
+      setVotes(data);
+    }
+  };
+
+  const mascotCounts: Record<string, number> = {};
+  const apparelCounts: Record<string, number> = {};
+
+  votes.forEach((vote) => {
+
+    vote.mascot_ids.forEach((id) => {
+      mascotCounts[id] = (mascotCounts[id] || 0) + 1;
+    });
+
+    vote.apparel_types.forEach((id) => {
+      apparelCounts[id] = (apparelCounts[id] || 0) + 1;
+    });
+
+  });
+
+  return (
+    <main className="min-h-screen bg-black text-white p-10">
 
       <div className="max-w-4xl mx-auto">
 
-        <a
-          href="/playground/code-coffee-cat"
-          className="
-            inline-block
-            mb-8
-            text-sm
-            text-zinc-600
-            hover:text-white
-            transition
-          "
-        >
-          ← Back
-        </a>
+        <h1 className="text-4xl font-bold mb-12">
+          CAT GPT Admin
+        </h1>
 
-        <div className="mb-10">
+        <section className="mb-14">
 
-          <p className="
-            mb-3
-            text-xs
-            tracking-[0.35em]
-            text-zinc-500
-            uppercase
-          ">
-            Admin Dashboard
-          </p>
+          <h2 className="text-2xl font-semibold mb-6">
+            Mascot Votes
+          </h2>
 
-          <h1 className="
-            text-4xl
-            tracking-[0.2em]
-            font-light
-            uppercase
-          ">
-            Vote Results
-          </h1>
+          <div className="space-y-3">
 
-        </div>
+            {Object.entries(mascotCounts)
+              .sort((a, b) => b[1] - a[1])
+              .map(([id, count]) => (
+                <div
+                  key={id}
+                  className="flex items-center justify-between border border-white/10 rounded-xl px-5 py-4"
+                >
+                  <span className="capitalize">
+                    {id}
+                  </span>
 
-        <RankingBoard cats={cats} />
+                  <span>
+                    {count}
+                  </span>
+                </div>
+              ))}
+
+          </div>
+
+        </section>
+
+        <section>
+
+          <h2 className="text-2xl font-semibold mb-6">
+            Apparel Demand
+          </h2>
+
+          <div className="space-y-3">
+
+            {Object.entries(apparelCounts)
+              .sort((a, b) => b[1] - a[1])
+              .map(([id, count]) => (
+                <div
+                  key={id}
+                  className="flex items-center justify-between border border-white/10 rounded-xl px-5 py-4"
+                >
+                  <span>
+                    {id}
+                  </span>
+
+                  <span>
+                    {count}
+                  </span>
+                </div>
+              ))}
+
+          </div>
+
+        </section>
 
       </div>
 
