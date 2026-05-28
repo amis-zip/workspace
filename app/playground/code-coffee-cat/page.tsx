@@ -8,12 +8,30 @@ import CatCard from "./components/cat-card";
 import { initialCats } from "./data";
 import { CatVariant } from "./types";
 
-const STORAGE_KEY = "code-coffee-cat-votes-v2";
-const USER_VOTE_KEY = "code-coffee-cat-user-vote-v2";
+const STORAGE_KEY = "code-coffee-cat-votes-v3";
+const USER_VOTE_KEY = "code-coffee-cat-user-vote-v3";
+
+const APPAREL_OPTIONS = [
+  {
+    id: "tshirt",
+    label: "T-Shirt",
+  },
+  {
+    id: "hoodie",
+    label: "Hoodie",
+  },
+  {
+    id: "ziphoodie",
+    label: "Zip Hoodie",
+  },
+];
 
 export default function CodeCoffeeCatPage() {
   const [cats, setCats] = useState<CatVariant[]>(initialCats);
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedApparel, setSelectedApparel] = useState<string[]>([]);
+
   const [hasVoted, setHasVoted] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -26,8 +44,11 @@ export default function CodeCoffeeCatPage() {
     }
 
     if (savedUserVote) {
+      const parsed = JSON.parse(savedUserVote);
+
       setHasVoted(true);
-      setSelectedIds(JSON.parse(savedUserVote));
+      setSelectedIds(parsed.selectedCats || []);
+      setSelectedApparel(parsed.selectedApparel || []);
     }
 
     setMounted(true);
@@ -55,8 +76,26 @@ export default function CodeCoffeeCatPage() {
     });
   };
 
+  const toggleApparel = (id: string) => {
+    if (hasVoted) return;
+
+    setSelectedApparel((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((item) => item !== id);
+      }
+
+      return [...prev, id];
+    });
+  };
+
   const submitVote = () => {
-    if (selectedIds.length !== 2 || hasVoted) return;
+    if (
+      selectedIds.length !== 2 ||
+      selectedApparel.length < 1 ||
+      hasVoted
+    ) {
+      return;
+    }
 
     const updatedCats = cats.map((cat) =>
       selectedIds.includes(cat.id)
@@ -68,7 +107,14 @@ export default function CodeCoffeeCatPage() {
     setHasVoted(true);
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCats));
-    localStorage.setItem(USER_VOTE_KEY, JSON.stringify(selectedIds));
+
+    localStorage.setItem(
+      USER_VOTE_KEY,
+      JSON.stringify({
+        selectedCats: selectedIds,
+        selectedApparel,
+      })
+    );
   };
 
   if (!mounted) return null;
@@ -116,30 +162,66 @@ export default function CodeCoffeeCatPage() {
 
             <p className="mt-2 text-sm text-zinc-500">
               Your picks have been submitted.
-              Voting is limited to one submission per device.
             </p>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {selectedIds.map((id) => {
-                const cat = cats.find((c) => c.id === id);
+            <div className="mt-5">
+              <p className="text-sm text-zinc-500 mb-2">
+                Your CAT GPT picks
+              </p>
 
-                return (
-                  <div
-                    key={id}
-                    className="
-                      rounded-full
-                      border
-                      border-white/10
-                      px-3
-                      py-1
-                      text-sm
-                      text-zinc-300
-                    "
-                  >
-                    {cat?.name}
-                  </div>
-                );
-              })}
+              <div className="flex flex-wrap gap-2">
+                {selectedIds.map((id) => {
+                  const cat = cats.find((c) => c.id === id);
+
+                  return (
+                    <div
+                      key={id}
+                      className="
+                        rounded-full
+                        border
+                        border-white/10
+                        px-3
+                        py-1
+                        text-sm
+                        text-zinc-300
+                      "
+                    >
+                      {cat?.name}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <p className="text-sm text-zinc-500 mb-2">
+                Preferred apparel
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {selectedApparel.map((item) => {
+                  const apparel = APPAREL_OPTIONS.find(
+                    (a) => a.id === item
+                  );
+
+                  return (
+                    <div
+                      key={item}
+                      className="
+                        rounded-full
+                        border
+                        border-white/10
+                        px-3
+                        py-1
+                        text-sm
+                        text-zinc-300
+                      "
+                    >
+                      {apparel?.label}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ) : (
@@ -155,8 +237,7 @@ export default function CodeCoffeeCatPage() {
               border-white/10
               bg-black/80
               backdrop-blur
-              p-3
-              md:p-4
+              p-4
             "
           >
             <div className="flex items-center justify-between">
@@ -167,10 +248,13 @@ export default function CodeCoffeeCatPage() {
               <button
                 type="button"
                 onClick={submitVote}
-                disabled={selectedIds.length !== 2}
+                disabled={
+                  selectedIds.length !== 2 ||
+                  selectedApparel.length < 1
+                }
                 className={`
                   px-5
-                  h-9
+                  h-10
                   rounded-full
                   text-sm
                   font-medium
@@ -178,7 +262,8 @@ export default function CodeCoffeeCatPage() {
                   duration-200
 
                   ${
-                    selectedIds.length === 2
+                    selectedIds.length === 2 &&
+                    selectedApparel.length >= 1
                       ? `
                         bg-zinc-200
                         text-black
@@ -196,11 +281,58 @@ export default function CodeCoffeeCatPage() {
               </button>
             </div>
 
-            {selectedIds.length === 2 && (
-              <p className="mt-3 text-xs text-zinc-500">
-                Ready to submit your picks.
+            <div className="mt-5">
+              <p className="mb-3 text-xs uppercase tracking-[0.16em] text-zinc-500">
+                What would you wear?
               </p>
-            )}
+
+              <div className="flex flex-wrap gap-2">
+                {APPAREL_OPTIONS.map((item) => {
+                  const active = selectedApparel.includes(item.id);
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => toggleApparel(item.id)}
+                      className={`
+                        px-4
+                        h-10
+                        rounded-full
+                        border
+                        text-sm
+                        transition-all
+
+                        ${
+                          active
+                            ? `
+                              border-white
+                              bg-white
+                              text-black
+                            `
+                            : `
+                              border-white/10
+                              bg-zinc-950
+                              text-zinc-400
+                              hover:border-white/20
+                              hover:text-white
+                            `
+                        }
+                      `}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {selectedIds.length === 2 &&
+              selectedApparel.length >= 1 && (
+                <p className="mt-4 text-xs text-zinc-500">
+                  Ready to submit your picks.
+                </p>
+              )}
           </div>
         )}
 
