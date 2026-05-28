@@ -15,7 +15,7 @@ export default function Home() {
         <div className="mb-16">
 
           <h1 className="text-6xl font-bold mb-4">
-            Amy S.
+            AMY S.
           </h1>
 
           <p className="text-gray-400 text-lg">
@@ -32,7 +32,7 @@ export default function Home() {
                 title="FAiKERZ"
                 description="internal operations & tools"
                 color="pink"
-                badge="LIVE"
+                badge="ACTIVE"
                 icon="shield"
               />
             </div>
@@ -44,6 +44,7 @@ export default function Home() {
                 title="LABS"
                 description="experiments & automation"
                 color="blue"
+                badge="TOP SECRET"
                 icon="flask"
               />
             </div>
@@ -55,6 +56,7 @@ export default function Home() {
                 title="PLAYGROUND"
                 description="fun projects & side apps"
                 color="green"
+                badge="LIVE"
                 icon="pizza"
               />
             </div>

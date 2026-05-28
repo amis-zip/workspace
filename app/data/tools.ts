@@ -36,15 +36,15 @@ export const playgroundTools = [
     href: "https://jummechu-five.vercel.app",
     color: "purple",
     badge: "LIVE",
-    icon: "flask",
+    icon: "pizza",
   },
 
   {
-    title: "Dev Hoodie Vote",
-    description: "team voting side project",
-    href: "/playground/dev-hoodie-vote",
+    title: "Code Coffee Cat",
+    description: "FAiKERZ teamwear voting",
+    href: "/playground/code-coffee-cat",
     color: "green",
-    badge: "WIP",
-    icon: "pizza",
+    badge: "Coming Soon",
+    icon: "cat",
   },
 ];
