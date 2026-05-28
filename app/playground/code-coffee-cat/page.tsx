@@ -9,36 +9,41 @@ import CatCard from "./components/cat-card";
 import { initialCats } from "./data";
 import { CatVariant } from "./types";
 
-import { supabase } from "@/lib/supabase";
-
 const STORAGE_KEY = "code-coffee-cat-votes-v2";
-const USER_ID_KEY = "code-coffee-cat-user-id";
+const USER_VOTE_KEY = "code-coffee-cat-user-vote-v2";
 
 export default function CodeCoffeeCatPage() {
   const [cats, setCats] = useState<CatVariant[]>(initialCats);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [selectedApparel, setSelectedApparel] = useState<string[]>([]);
 
-  const [hasSaved, setHasSaved] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false);
 
   const [mounted, setMounted] = useState(false);
 
+  const [apparelType, setApparelType] = useState<string | null>(
+    null
+  );
+
   useEffect(() => {
     const savedVotes = localStorage.getItem(STORAGE_KEY);
+
+    const savedUserVote =
+      localStorage.getItem(USER_VOTE_KEY);
 
     if (savedVotes) {
       setCats(JSON.parse(savedVotes));
     }
 
-    let voterId = localStorage.getItem(USER_ID_KEY);
+    if (savedUserVote) {
+      const parsed = JSON.parse(savedUserVote);
 
-    if (!voterId) {
-      voterId = crypto.randomUUID();
-      localStorage.setItem(USER_ID_KEY, voterId);
+      setSelectedIds(parsed.selectedCats || []);
+
+      setApparelType(parsed.apparelType || null);
+
+      setHasVoted(true);
     }
-
-    loadExistingVote(voterId);
 
     setMounted(true);
   }, []);
@@ -46,22 +51,11 @@ export default function CodeCoffeeCatPage() {
   useEffect(() => {
     if (!mounted) return;
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cats));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(cats)
+    );
   }, [cats, mounted]);
-
-  const loadExistingVote = async (voterId: string) => {
-    const { data } = await supabase
-      .from("votes")
-      .select("*")
-      .eq("voter_id", voterId)
-      .single();
-
-    if (data) {
-      setSelectedIds(data.mascot_ids || []);
-      setSelectedApparel(data.apparel_types || []);
-      setHasSaved(true);
-    }
-  };
 
   const toggleCat = (id: string) => {
     setSelectedIds((prev) => {
@@ -77,49 +71,73 @@ export default function CodeCoffeeCatPage() {
     });
   };
 
-  const toggleApparel = (type: string) => {
-    setSelectedApparel((prev) => {
-      if (prev.includes(type)) {
-        return prev.filter((item) => item !== type);
-      }
-
-      return [...prev, type];
-    });
-  };
-
   const submitVote = async () => {
     if (selectedIds.length !== 2) return;
 
-    const voterId = localStorage.getItem(USER_ID_KEY);
+    if (!apparelType) return;
 
-    if (!voterId) return;
+    const previousVoteRaw =
+      localStorage.getItem(USER_VOTE_KEY);
 
-    const updatedCats = initialCats.map((cat) => ({
-      ...cat,
-      votes: cat.votes,
-    }));
+    const previousVotes = previousVoteRaw
+      ? JSON.parse(previousVoteRaw)
+      : null;
+
+    let updatedCats = [...cats];
+
+    // 이전 투표 차감
+    if (previousVotes?.selectedCats) {
+      updatedCats = updatedCats.map((cat) => {
+        if (
+          previousVotes.selectedCats.includes(cat.id)
+        ) {
+          return {
+            ...cat,
+            votes: Math.max(0, cat.votes - 1),
+          };
+        }
+
+        return cat;
+      });
+    }
+
+    // 새 투표 추가
+    updatedCats = updatedCats.map((cat) => {
+      if (selectedIds.includes(cat.id)) {
+        return {
+          ...cat,
+          votes: cat.votes + 1,
+        };
+      }
+
+      return cat;
+    });
 
     setCats(updatedCats);
 
-    await supabase
-      .from("votes")
-      .upsert({
-        voter_id: voterId,
-        mascot_ids: selectedIds,
-        apparel_types: selectedApparel,
-      });
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(updatedCats)
+    );
 
-    setHasSaved(true);
+    localStorage.setItem(
+      USER_VOTE_KEY,
+      JSON.stringify({
+        selectedCats: selectedIds,
+        apparelType,
+      })
+    );
+
+    setHasVoted(true);
   };
 
   if (!mounted) return null;
 
   return (
-    <main className="min-h-screen bg-black text-white px-6 py-10">
+    <main className="min-h-screen bg-black text-white px-4 md:px-6 py-10">
       <Navbar />
 
-      <div className="max-w-6xl mx-auto">
-
+      <div className="max-w-5xl mx-auto">
         <a
           href="/playground"
           className="inline-block mb-8 text-sm text-zinc-600 hover:text-white transition"
@@ -128,7 +146,6 @@ export default function CodeCoffeeCatPage() {
         </a>
 
         <section className="mb-10">
-
           <p className="mb-3 text-xs tracking-[0.18em] text-zinc-500 uppercase">
             FAiKERZ Teamwear Vote
           </p>
@@ -146,49 +163,51 @@ export default function CodeCoffeeCatPage() {
             CODE. COFFEE. CAT.
           </h1>
 
-          <p className="mt-4 text-zinc-400 max-w-2xl">
+          <p className="mt-4 text-zinc-400 text-sm md:text-base leading-relaxed">
             Help decide the final CAT GPT teamwear release.
-            Pick your favorite apparel types and choose your top 2 mascot variants.
+            Pick your favorite apparel type and choose your
+            top 2 mascot variants.
           </p>
-
         </section>
 
-        <section className="mb-16">
-
-          <p className="mb-3 text-xs tracking-[0.18em] text-zinc-500 uppercase">
+        <section className="mb-12">
+          <p className="mb-4 text-[11px] tracking-[0.18em] text-zinc-500 uppercase">
             Apparel Survey
           </p>
 
-          <h2 className="text-2xl font-semibold text-white mb-6">
+          <h2 className="text-2xl font-semibold mb-6">
             What would you actually wear?
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
             {[
               {
                 id: "tshirt",
                 title: "T-Shirt",
                 desc: "Daily oversized fit",
               },
+
               {
                 id: "hoodie",
                 title: "Hoodie",
                 desc: "Heavyweight pullover",
               },
+
               {
                 id: "ziphoodie",
                 title: "Zip Hoodie",
                 desc: "Layered streetwear fit",
               },
             ].map((item) => {
-              const active = selectedApparel.includes(item.id);
+              const active =
+                apparelType === item.id;
 
               return (
                 <button
                   key={item.id}
-                  type="button"
-                  onClick={() => toggleApparel(item.id)}
+                  onClick={() =>
+                    setApparelType(item.id)
+                  }
                   className={`
                     rounded-2xl
                     border
@@ -201,91 +220,71 @@ export default function CodeCoffeeCatPage() {
                       active
                         ? `
                           border-white
-                          bg-white/[0.03]
+                          bg-zinc-900
+                          shadow-[0_0_24px_rgba(255,255,255,0.05)]
                         `
                         : `
                           border-white/10
+                          bg-zinc-950
                           hover:border-white/20
                         `
                     }
                   `}
                 >
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-lg font-semibold">
                     {item.title}
                   </h3>
 
-                  <p className="mt-2 text-sm text-zinc-500">
+                  <p className="mt-1 text-sm text-zinc-500">
                     {item.desc}
                   </p>
                 </button>
               );
             })}
-
           </div>
-
         </section>
 
-        <section className="mb-16">
-
-          <p className="mb-3 text-xs tracking-[0.18em] text-zinc-500 uppercase">
+        <section className="mb-14">
+          <p className="mb-4 text-[11px] tracking-[0.18em] text-zinc-500 uppercase">
             Official Mockup
           </p>
 
-          <h2 className="text-3xl font-semibold text-white mb-4">
+          <h2 className="text-3xl font-semibold mb-4">
             T-Shirts
           </h2>
 
-          <p className="text-zinc-500 mb-8 max-w-3xl">
-            Current production mockup for the oversized vintage T-shirt version.
-            Hoodie and zip hoodie concepts may be developed based on team demand.
+          <p className="max-w-3xl text-sm text-zinc-400 leading-relaxed mb-8">
+            Vintage washed black apparel concept with
+            oversized silhouette, back graphic, sleeve
+            detail, and CAT GPT mascot branding.
           </p>
 
-          <div className="overflow-hidden rounded-3xl border border-white/10">
+          <div className="rounded-3xl overflow-hidden border border-white/10 bg-zinc-950">
             <img
               src="/mockups/tshirt-board.png"
-              alt="CAT GPT mockup"
-              className="w-full object-cover"
+              alt="CAT GPT Teamwear Mockup"
+              className="w-full h-auto object-cover"
             />
           </div>
-
         </section>
 
-        <section className="mb-10">
-
-          <p className="mb-3 text-xs tracking-[0.18em] text-zinc-500 uppercase">
-            Mascot Vote
-          </p>
-
-          <h2 className="text-3xl font-semibold text-white mb-8">
-            Pick your 2 favorite CAT GPT variants
-          </h2>
-
-        </section>
-
-        <div className="sticky top-4 z-20 mb-10 rounded-2xl border border-white/10 bg-black/80 backdrop-blur p-4">
-
+        <div className="sticky top-4 z-20 mb-8 rounded-2xl border border-white/10 bg-black/80 backdrop-blur p-3 md:p-4">
           <div className="flex items-center justify-between">
-
-            <div>
-              <p className="text-sm font-medium text-zinc-300">
-                {selectedIds.length}/2 mascot picks selected
-              </p>
-
-              <p className="mt-1 text-xs text-zinc-500">
-                Select at least 1 apparel type.
-              </p>
-            </div>
+            <span className="text-sm font-medium text-zinc-300">
+              {selectedIds.length}/2 mascot picks
+              selected
+            </span>
 
             <button
               type="button"
               onClick={submitVote}
               disabled={
                 selectedIds.length !== 2 ||
-                selectedApparel.length === 0
+                !apparelType
               }
               className={`
                 px-5
-                h-10
+                h-9
                 rounded-full
                 text-sm
                 font-medium
@@ -294,7 +293,7 @@ export default function CodeCoffeeCatPage() {
 
                 ${
                   selectedIds.length === 2 &&
-                  selectedApparel.length > 0
+                  apparelType
                     ? `
                       bg-zinc-200
                       text-black
@@ -308,37 +307,39 @@ export default function CodeCoffeeCatPage() {
                 }
               `}
             >
-              {hasSaved ? "Update Picks" : "Save Picks"}
+              {hasVoted
+                ? "Update Picks"
+                : "Submit Picks"}
             </button>
-
           </div>
 
-          {hasSaved && (
-            <p className="mt-3 text-xs text-zinc-500">
-              Your selections are saved. You can still update them later.
-            </p>
-          )}
-
+          <p className="mt-3 text-xs text-zinc-500">
+            You can update your vote later.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <section className="mb-6">
+          <p className="mb-3 text-[11px] tracking-[0.18em] text-zinc-500 uppercase">
+            Mascot Vote
+          </p>
 
+          <h2 className="text-3xl font-semibold">
+            Pick your 2 favorite CAT GPT variants
+          </h2>
+        </section>
+
+        <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
           {cats.map((cat) => (
             <CatCard
               key={cat.id}
               cat={cat}
               selected={selectedIds.includes(cat.id)}
-              disabled={
-                selectedIds.length >= 2 &&
-                !selectedIds.includes(cat.id)
-              }
-              hasVoted={hasSaved}
+              disabled={selectedIds.length >= 2}
+              hasVoted={hasVoted}
               onToggle={() => toggleCat(cat.id)}
             />
           ))}
-
         </div>
-
       </div>
     </main>
   );
