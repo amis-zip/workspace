@@ -4,7 +4,7 @@ export const initialCats: CatVariant[] = [
   {
     id: "byte",
     name: "Byte",
-    image: "/cats/byte.jpeg",
+    image: "/cats/byte.png",
     tagline: "Classic dev energy.",
     votes: 0,
   },
@@ -20,7 +20,7 @@ export const initialCats: CatVariant[] = [
   {
     id: "pixel",
     name: "Pixel",
-    image: "/cats/pixel.jpeg",
+    image: "/cats/pixel.png",
     tagline: "Creative chaos.",
     votes: 0,
   },
@@ -28,7 +28,7 @@ export const initialCats: CatVariant[] = [
   {
     id: "mocha",
     name: "Mocha",
-    image: "/cats/mocha.jpeg",
+    image: "/cats/mocha.png",
     tagline: "Coffee-first workflow.",
     votes: 0,
   },
@@ -36,7 +36,7 @@ export const initialCats: CatVariant[] = [
   {
     id: "luna",
     name: "Luna",
-    image: "/cats/luna.jpeg",
+    image: "/cats/luna.png",
     tagline: "Minimal night mode.",
     votes: 0,
   },
@@ -44,7 +44,7 @@ export const initialCats: CatVariant[] = [
   {
     id: "cheese",
     name: "Cheese",
-    image: "/cats/cheese.jpeg",
+    image: "/cats/cheese.png",
     tagline: "Orange cat behavior.",
     votes: 0,
   },
@@ -52,7 +52,7 @@ export const initialCats: CatVariant[] = [
   {
     id: "valentine",
     name: "Valentine",
-    image: "/cats/valentine.jpeg",
+    image: "/cats/valentine.png",
     tagline: "Code. Love. Cat.",
     votes: 0,
   },
