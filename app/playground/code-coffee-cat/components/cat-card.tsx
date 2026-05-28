@@ -5,6 +5,7 @@ type Props = {
   cat: CatVariant;
   selected: boolean;
   disabled: boolean;
+  hasVoted: boolean;
   onToggle: () => void;
 };
 
@@ -12,13 +13,14 @@ export default function CatCard({
   cat,
   selected,
   disabled,
+  hasVoted,
   onToggle,
 }: Props) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      disabled={disabled && !selected}
+      disabled={(disabled || hasVoted) && !selected}
       className={`
         group
         relative
