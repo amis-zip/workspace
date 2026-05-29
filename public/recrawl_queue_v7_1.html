@@ -86,6 +86,20 @@
   .copybar{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;}
   .copybar .cnt{font-size:.8rem;color:var(--ink-soft);}
 
+  /* 제외 영역 (metadata 에러 번호 일회성 필터) */
+  .exclude-toggle{background:none;border:none;color:var(--berry-text);font-family:var(--font-body);
+    font-size:.82rem;cursor:pointer;padding:6px 0;margin-top:6px;text-decoration:underline;
+    text-decoration-color:var(--berry);text-underline-offset:3px;}
+  .exclude-toggle:hover{color:var(--ink);}
+  .exclude-box{background:#fff7fb;border:1px dashed var(--berry);border-radius:10px;
+    padding:12px 14px;margin-top:8px;}
+  .exclude-box textarea{width:100%;min-height:60px;border:1px solid #f0d4e0;border-radius:8px;
+    padding:8px 10px;font-family:monospace;font-size:.82rem;resize:vertical;background:#fff;
+    color:var(--ink);box-sizing:border-box;}
+  .exclude-summary{font-size:.8rem;color:var(--ink-soft);margin-top:6px;}
+  .exclude-summary b{color:var(--berry-text);}
+  .exclude-summary.warn{color:#c44;}
+
   table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.86rem;}
   th{background:var(--berry);color:#fff;padding:10px 9px;text-align:left;font-weight:normal;
     font-size:.83rem;}
@@ -199,6 +213,18 @@
           <button class="ghost tiny" onclick="copyText(getText('previewString'),this)">📋 문자열 복사</button>
           <span class="cnt" id="previewCnt"></span>
         </div>
+        <button class="exclude-toggle" type="button" onclick="toggleExclude('preview')">
+          <span id="excludeTogglePreviewLabel">＋ metadata 에러 번호 제외하기</span>
+        </button>
+        <div id="excludeBoxPreview" class="exclude-box hide">
+          <div class="hint" style="margin-bottom:6px;">
+            Prefect UI 에러 메시지를 통째로 붙여넣으면 괄호 안 watch_no만 자동 추출해 문자열에서 뺍니다.
+            <br><span style="color:var(--ink-soft);">예: <code>실행 실패: ... (watch_no: 19365, 19364, ...)</code> · 회차 저장과는 무관한 일회성 필터입니다.</span>
+          </div>
+          <textarea id="excludeInputPreview" oninput="applyExclude('preview')"
+            placeholder="에러 메시지를 붙여넣거나, 제외할 번호를 직접 입력하세요"></textarea>
+          <div class="exclude-summary" id="excludeSummaryPreview"></div>
+        </div>
       </div>
 
       <div class="row end" style="margin-top:18px;">
@@ -275,7 +301,9 @@ function flash(m){
   const t=document.getElementById('toast');
   t.textContent=m; t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>t.classList.remove('show'),2300);
+  // 메시지 길이에 따라 2.3~4초 (긴 메시지일수록 오래 표시)
+  const duration=Math.min(4000,Math.max(2300,m.length*60));
+  toastTimer=setTimeout(()=>t.classList.remove('show'),duration);
 }
 function copyText(txt,btn){
   navigator.clipboard.writeText(txt).then(()=>{
@@ -283,6 +311,92 @@ function copyText(txt,btn){
     if(btn){ const o=btn.innerHTML; btn.innerHTML='✓ 복사됨';
       setTimeout(()=>btn.innerHTML=o,1400); }
   },()=>flash('복사 실패 — 직접 선택해 복사하세요'));
+}
+
+// ================= 제외 기능 (metadata 에러 번호 일회성 필터) =================
+// 저장에 영향 없음. 화면 표시·복사용 문자열에서만 빼는 임시 필터.
+// 회차 데이터(sessions)에는 절대 손대지 않음.
+//
+// 입력 패턴 2가지 모두 지원:
+//  ① 에러 메시지 전체: "...(watch_no: 19365, 19364, 19011, ...)" → 마지막 괄호 안 숫자만 추출
+//  ② 번호만 직접: "19365 19364 19011" 또는 콤마 구분도 OK
+function parseExcludeNumbers(raw){
+  if(!raw||!raw.trim()) return [];
+  // ① 괄호가 있으면 마지막 괄호 안만 사용 (에러 메시지 자동 추출)
+  //    여러 괄호가 있을 수 있어 마지막 것을 잡음 (보통 watch_no 목록이 맨 뒤)
+  let text=raw;
+  const parens=[...raw.matchAll(/\(([^)]+)\)/g)];
+  if(parens.length>0){
+    text=parens[parens.length-1][1];
+  }
+  // ② 4~6자리 숫자만 추출 (watch_no 자릿수 범위)
+  const nums=text.match(/\d{4,6}/g)||[];
+  // 중복 제거 + 정수화
+  return [...new Set(nums.map(n=>parseInt(n,10)))];
+}
+
+// 두 위치 공용 — which는 'preview' 또는 'latest'
+function toggleExclude(which){
+  const w=which.charAt(0).toUpperCase()+which.slice(1); // Preview / Latest
+  const box=document.getElementById('excludeBox'+w);
+  const label=document.getElementById('excludeToggle'+w+'Label');
+  const hidden=box.classList.contains('hide');
+  if(hidden){
+    box.classList.remove('hide');
+    label.textContent='− 제외 입력 접기';
+  } else {
+    box.classList.add('hide');
+    label.textContent='＋ metadata 에러 번호 제외하기';
+    // 접을 때 입력 비우고 원래 문자열로 복원
+    const ta=document.getElementById('excludeInput'+w);
+    if(ta && ta.value){ ta.value=''; applyExclude(which); }
+  }
+}
+
+// 원본 문자열(제외 전)을 잃지 않으려고 data-original 속성에 보관
+function applyExclude(which){
+  const w=which.charAt(0).toUpperCase()+which.slice(1);
+  const stringEl=document.getElementById(which+'String');
+  const cntEl=document.getElementById(which+'Cnt');
+  const summary=document.getElementById('excludeSummary'+w);
+  const ta=document.getElementById('excludeInput'+w);
+  if(!stringEl||!ta) return;
+
+  // 원본 백업 (최초 1회)
+  if(!stringEl.dataset.original){
+    stringEl.dataset.original=stringEl.textContent;
+    if(cntEl) stringEl.dataset.originalCnt=cntEl.textContent;
+  }
+  const originalNums=stringEl.dataset.original.split(/\s+/).filter(Boolean)
+    .map(n=>parseInt(n,10)).filter(n=>!isNaN(n));
+
+  const excludeList=parseExcludeNumbers(ta.value);
+  if(excludeList.length===0){
+    // 입력 없음 → 원래대로
+    stringEl.textContent=stringEl.dataset.original;
+    if(cntEl && stringEl.dataset.originalCnt) cntEl.textContent=stringEl.dataset.originalCnt;
+    summary.textContent='';
+    summary.classList.remove('warn');
+    return;
+  }
+  const excludeSet=new Set(excludeList);
+  const kept=originalNums.filter(n=>!excludeSet.has(n));
+  const actuallyExcluded=originalNums.filter(n=>excludeSet.has(n));
+  const notInList=excludeList.filter(n=>!originalNums.includes(n));
+
+  stringEl.textContent=kept.join(' ');
+  if(cntEl) cntEl.textContent=kept.length+'개 번호';
+
+  // 요약 표시
+  let msg='입력에서 <b>'+excludeList.length+'개</b> 번호 인식 · '
+    +'리스트에서 <b>'+actuallyExcluded.length+'개</b> 제외 → '
+    +'결과 <b>'+kept.length+'개</b>';
+  if(notInList.length>0){
+    msg+=' <span style="color:var(--ink-soft);">('+notInList.length+'개는 원래 리스트에 없던 번호: '
+      +notInList.slice(0,5).join(', ')+(notInList.length>5?' …':'')+')</span>';
+  }
+  summary.innerHTML=msg;
+  summary.classList.toggle('warn',actuallyExcluded.length===0);
 }
 
 function setMode(m){
@@ -324,8 +438,14 @@ function refreshPreview(){
   const box=document.getElementById('previewBox');
   if(blanks.length>0){
     box.classList.remove('hide');
-    document.getElementById('previewString').textContent=blanks.join(' ');
+    const stringEl=document.getElementById('previewString');
+    stringEl.textContent=blanks.join(' ');
     document.getElementById('previewCnt').textContent=blanks.length+'개 번호';
+    // 원본이 바뀌었으니 제외 백업 리셋 후, 제외 입력이 살아 있으면 재적용
+    delete stringEl.dataset.original;
+    delete stringEl.dataset.originalCnt;
+    const excludeTa=document.getElementById('excludeInputPreview');
+    if(excludeTa && excludeTa.value.trim()) applyExclude('preview');
   }else{
     box.classList.add('hide');
   }
@@ -367,7 +487,20 @@ function saveSession(){
   });
   const ok=saveSessions(sessions);
   savePref({kind,companyNo});
-  flash(ok?(round+'회차 저장 완료 · 공란 '+blanks.length+'건 🩷'):'저장 실패 (브라우저 저장소 오류)');
+
+  // 토스트 메시지 — 제외 필터가 적용 중이면 함께 표시 (저장 데이터에는 영향 없음)
+  let toastMsg=round+'회차 저장 완료 · 공란 '+blanks.length+'건 🩷';
+  const excludeTa=document.getElementById('excludeInputPreview');
+  if(excludeTa && excludeTa.value.trim()){
+    const excludeList=parseExcludeNumbers(excludeTa.value);
+    const excludeSet=new Set(excludeList);
+    const actuallyExcluded=blanks.filter(n=>excludeSet.has(n)).length;
+    if(actuallyExcluded>0){
+      toastMsg=round+'회차 저장 완료 · 공란 '+blanks.length+'건 🩷 '
+        +'(그중 '+actuallyExcluded+'건 제외 후 '+(blanks.length-actuallyExcluded)+'건 전송 예정)';
+    }
+  }
+  flash(ok?toastMsg:'저장 실패 (브라우저 저장소 오류)');
   document.getElementById('input').value='';
   document.getElementById('label').value='';
   refreshPreview();
@@ -476,8 +609,19 @@ function renderHistory(){
     +'<div class="hint" style="margin-bottom:6px;">재크롤링 문자열 (이번 회차)</div>'
     +'<div class="result-string" id="latestString">'+esc(latestString)+'</div>'
     +'<div class="copybar"><button class="ghost tiny" onclick="copyText(getText(\'latestString\'),this)">📋 문자열 복사</button>'
-    +'<span class="cnt">'+latest.blanks.length+'개 번호</span>'
+    +'<span class="cnt" id="latestCnt">'+latest.blanks.length+'개 번호</span>'
     +'<a class="link" target="_blank" href="'+esc(listUrl(lkind,lcompany))+'">콘솔 '+kindLabel(lkind)+' 리스트 열기 ↗</a>'
+    +'</div>'
+    +'<button class="exclude-toggle" type="button" onclick="toggleExclude(\'latest\')">'
+    +'<span id="excludeToggleLatestLabel">＋ metadata 에러 번호 제외하기</span></button>'
+    +'<div id="excludeBoxLatest" class="exclude-box hide">'
+    +'<div class="hint" style="margin-bottom:6px;">'
+    +'Prefect UI 에러 메시지를 통째로 붙여넣으면 괄호 안 watch_no만 자동 추출해 문자열에서 뺍니다.'
+    +'<br><span style="color:var(--ink-soft);">회차 저장과는 무관한 일회성 필터입니다 — 저장된 회차 데이터는 그대로 보존됩니다.</span>'
+    +'</div>'
+    +'<textarea id="excludeInputLatest" oninput="applyExclude(\'latest\')" '
+    +'placeholder="에러 메시지를 붙여넣거나, 제외할 번호를 직접 입력하세요"></textarea>'
+    +'<div class="exclude-summary" id="excludeSummaryLatest"></div>'
     +'</div>';
   if(prev){
     html+='<div class="notice info">ℹ️ “신규”는 직전 회차 입력분에 없던 번호라는 뜻일 뿐, '

@@ -29,8 +29,9 @@ const apparelOptions = [
 
 type VoteRow = {
   user_id: string;
+  voter_id: string;
   mascot_ids: string[];
-  apparel_type: string;
+  apparel_types: string[];
   updated_at?: string;
 };
 
@@ -44,46 +45,42 @@ export default function CodeCoffeeCatPage() {
 
   useEffect(() => {
     const loadVote = async () => {
-      try {
-        const userId = getUserId();
+  try {
+    const userId = getUserId();
 
-        const { data, error } = await supabase
-          .from("votes")
-          .select("user_id, mascot_ids, apparel_type, updated_at")
-          .eq("user_id", userId)
-          .maybeSingle();
+    const { data, error } = await supabase
+      .from("votes")
+      .select(
+        "user_id, voter_id, mascot_ids, apparel_types, updated_at"
+      )
+      .eq("user_id", userId)
+      .maybeSingle();
 
-        
-          const voteData = data as VoteRow | null;
+    if (error) {
+      console.error(error);
+      setStatus("Could not load your previous vote.");
+      return;
+    }
 
-        if (voteData) {
-          setSelectedIds(voteData.mascot_ids || []);
-          setApparelType(voteData.apparel_type || null);
-          setHasVoted(true);
-        }
-        
-        if (error) {
-          console.error(error);
-          setStatus("Could not load your previous vote.");
-        }
+    const voteData = data as VoteRow | null;
 
-        if (data) {
-          setSelectedIds(data.mascot_ids || []);
-          setApparelType(data.apparel_type || null);
-          setHasVoted(true);
+    if (!voteData) return;
 
-          localStorage.setItem(
-            USER_VOTE_KEY,
-            JSON.stringify({
-              selectedCats: data.mascot_ids || [],
-              apparelType: data.apparel_type || null,
-            })
-          );
-        }
-      } finally {
-        setMounted(true);
-      }
-    };
+    setSelectedIds(voteData.mascot_ids || []);
+    setApparelType(voteData.apparel_types?.[0] || null);
+    setHasVoted(true);
+
+    localStorage.setItem(
+      USER_VOTE_KEY,
+      JSON.stringify({
+        selectedCats: voteData.mascot_ids || [],
+        apparelType: voteData.apparel_types?.[0] || null,
+      })
+    );
+  } finally {
+    setMounted(true);
+  }
+};
 
     loadVote();
   }, []);
@@ -105,36 +102,22 @@ export default function CodeCoffeeCatPage() {
   };
 
   const submitVote = async () => {
-    if (selectedIds.length !== 2 || !apparelType) return;
+  if (selectedIds.length !== 2 || !apparelType) return;
 
-    try {
-      setLoading(true);
-      setStatus(null);
+  try {
+    setLoading(true);
+    setStatus(null);
 
-      const userId = getUserId();
+    const userId = getUserId();
 
-    
-      const { error } = await supabase
-        .from("votes")
-        .upsert(
-         {
-            user_id: userId,
-            mascot_ids: selectedIds,
-            apparel_types: [apparelType],
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "user_id",
-          }
-       );
-
-      console.log("SUPABASE ERROR", error);  
-      
-      const { error } = await supabase.from("votes").upsert(
+    const { error: upsertError } = await supabase
+      .from("votes")
+      .upsert(
         {
           user_id: userId,
+          voter_id: userId,
           mascot_ids: selectedIds,
-          apparel_type: apparelType,
+          apparel_types: [apparelType],
           updated_at: new Date().toISOString(),
         },
         {
@@ -142,27 +125,38 @@ export default function CodeCoffeeCatPage() {
         }
       );
 
-      if (error) {
-        console.error(error);
-        setStatus("Vote save failed. Check Supabase policy or schema.");
-        return;
-      }
+    console.log("SUPABASE ERROR", upsertError);
 
-      localStorage.setItem(
-        USER_VOTE_KEY,
-        JSON.stringify({
-          selectedCats: selectedIds,
-          apparelType,
-        })
+    if (upsertError) {
+      console.error(upsertError);
+      setStatus(
+        `Vote save failed: ${upsertError.message}`
       );
-
-      setHasVoted(true);
-      setStatus(hasVoted ? "Vote updated." : "Vote submitted.");
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
 
+    localStorage.setItem(
+      USER_VOTE_KEY,
+      JSON.stringify({
+        selectedCats: selectedIds,
+        apparelType,
+      })
+    );
+
+    setHasVoted(true);
+
+    setStatus(
+      hasVoted
+        ? "Vote updated successfully."
+        : "Vote submitted successfully."
+    );
+  } catch (err) {
+    console.error(err);
+    setStatus("Unexpected error occurred.");
+  } finally {
+    setLoading(false);
+  }
+};
   
   
   if (!mounted) return null;

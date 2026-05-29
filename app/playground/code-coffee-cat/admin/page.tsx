@@ -7,7 +7,7 @@ import { initialCats } from "../data";
 type Vote = {
   user_id?: string;
   mascot_ids: string[];
-  apparel_type: string;
+  apparel_types: string[];
   updated_at?: string;
 };
 
@@ -17,12 +17,6 @@ const apparelLabels: Record<string, string> = {
   ziphoodie: "Zip Hoodie",
 };
 
-const medalStyles = [
-  "border-yellow-300/40 bg-yellow-300/10",
-  "border-zinc-300/30 bg-zinc-300/10",
-  "border-orange-400/30 bg-orange-400/10",
-];
-
 export default function AdminPage() {
   const [votes, setVotes] = useState<Vote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,11 +25,12 @@ export default function AdminPage() {
   const fetchVotes = async () => {
     const { data, error } = await supabase
       .from("votes")
-      .select("user_id, mascot_ids, apparel_type, updated_at")
+      .select("user_id, mascot_ids, apparel_types, updated_at")
       .order("updated_at", { ascending: false });
 
     if (error) {
-      console.error(error);
+      console.error("SUPABASE ADMIN ERROR:", error);
+      setVotes([]);
       return;
     }
 
@@ -76,10 +71,12 @@ export default function AdminPage() {
     };
 
     votes.forEach((vote) => {
-      if (!vote.apparel_type) return;
+      const apparel = vote.apparel_types?.[0];
 
-      counts[vote.apparel_type] =
-        (counts[vote.apparel_type] || 0) + 1;
+      if (!apparel) return;
+
+      counts[apparel] =
+        (counts[apparel] || 0) + 1;
     });
 
     return counts;
@@ -108,6 +105,7 @@ export default function AdminPage() {
 
   const topMascot = sortedMascots[0];
   const topApparel = sortedApparel[0];
+  const lastVote = votes[0];
 
   return (
     <main className="min-h-screen bg-black text-white px-4 md:px-6 py-10">
@@ -144,7 +142,7 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section className="grid md:grid-cols-3 gap-4 mb-14">
+        <section className="grid md:grid-cols-4 gap-4 mb-14">
           <div className="rounded-3xl border border-white/10 bg-zinc-950 p-6">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
               Unique Voters
@@ -157,11 +155,13 @@ export default function AdminPage() {
 
           <div className="rounded-3xl border border-white/10 bg-zinc-950 p-6">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Mascot Selections
+              Last Vote
             </p>
 
-            <h3 className="mt-4 text-5xl font-semibold">
-              {totalMascotVotes}
+            <h3 className="mt-4 text-lg font-semibold">
+              {lastVote?.updated_at
+                ? new Date(lastVote.updated_at).toLocaleString()
+                : "-"}
             </h3>
           </div>
 
@@ -247,18 +247,18 @@ export default function AdminPage() {
                 ? (cat.count / totalMascotVotes) * 100
                 : 0;
 
-              const medalClass = medalStyles[index] || "border-white/10 bg-zinc-950";
+                const cardClass =
+                  index === 0
+                    ? "border-white/20 bg-zinc-900"
+                    : "border-white/10 bg-zinc-950";
 
               return (
                 <div
                   key={cat.id}
-                  className={`rounded-3xl border p-6 transition-all duration-500 ${medalClass}`}
+                  className={`rounded-3xl border p-6 transition-all duration-500 ${cardClass}`}
                 >
                   <div className="flex items-center justify-between mb-5 gap-4">
-                    <div className="flex items-center gap-4 md:gap-5">
-                      <div className="w-10 h-10 rounded-full border border-white/10 bg-black/30 flex items-center justify-center font-semibold">
-                        #{index + 1}
-                      </div>
+                    <div className="flex items-center gap-5">
 
                       <img
                         src={cat.image}
@@ -278,9 +278,11 @@ export default function AdminPage() {
                     </div>
 
                     <div className="text-right">
-                      <p className="text-3xl font-semibold">
+                      <p className="text-4xl mb-3">🏆</p>
+
+                      <h2 className="text-4xl font-semibold tracking-wide">
                         {cat.count}
-                      </p>
+                      </h2>
 
                       <p className="text-xs text-zinc-500 mt-1">
                         votes
