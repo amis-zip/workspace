@@ -1,0 +1,365 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { initialCats } from "../data";
+
+type Vote = {
+  user_id?: string;
+  mascot_ids: string[];
+  apparel_type: string;
+  updated_at?: string;
+};
+
+const apparelLabels: Record<string, string> = {
+  tshirt: "T-Shirt",
+  hoodie: "Hoodie",
+  ziphoodie: "Zip Hoodie",
+};
+
+const medalStyles = [
+  "border-yellow-300/40 bg-yellow-300/10",
+  "border-zinc-300/30 bg-zinc-300/10",
+  "border-orange-400/30 bg-orange-400/10",
+];
+
+export default function AdminPage() {
+  const [votes, setVotes] = useState<Vote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+  const fetchVotes = async () => {
+    const { data, error } = await supabase
+      .from("votes")
+      .select("user_id, mascot_ids, apparel_type, updated_at")
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setVotes(data || []);
+    setLastUpdated(new Date().toLocaleTimeString());
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchVotes();
+
+    const interval = setInterval(fetchVotes, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const mascotCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+
+    initialCats.forEach((cat) => {
+      counts[cat.id] = 0;
+    });
+
+    votes.forEach((vote) => {
+      vote.mascot_ids?.forEach((id) => {
+        counts[id] = (counts[id] || 0) + 1;
+      });
+    });
+
+    return counts;
+  }, [votes]);
+
+  const apparelCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      tshirt: 0,
+      hoodie: 0,
+      ziphoodie: 0,
+    };
+
+    votes.forEach((vote) => {
+      if (!vote.apparel_type) return;
+
+      counts[vote.apparel_type] =
+        (counts[vote.apparel_type] || 0) + 1;
+    });
+
+    return counts;
+  }, [votes]);
+
+  const totalMascotVotes = Object.values(mascotCounts).reduce(
+    (a, b) => a + b,
+    0
+  );
+
+  const totalApparelVotes = Object.values(apparelCounts).reduce(
+    (a, b) => a + b,
+    0
+  );
+
+  const sortedMascots = initialCats
+    .map((cat) => ({
+      ...cat,
+      count: mascotCounts[cat.id] || 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const sortedApparel = Object.entries(apparelCounts).sort(
+    (a, b) => b[1] - a[1]
+  );
+
+  const topMascot = sortedMascots[0];
+  const topApparel = sortedApparel[0];
+
+  return (
+    <main className="min-h-screen bg-black text-white px-4 md:px-6 py-10">
+      <div className="max-w-6xl mx-auto">
+        <a
+          href="/playground/code-coffee-cat"
+          className="inline-block mb-8 text-sm text-zinc-600 hover:text-white transition"
+        >
+          ← Vote Page
+        </a>
+
+        <section className="mb-14">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div>
+              <p className="mb-3 text-xs tracking-[0.18em] uppercase text-zinc-500">
+                Live Dashboard
+              </p>
+
+              <h1 className="text-4xl md:text-6xl font-semibold tracking-[0.06em] uppercase">
+                CAT GPT Admin
+              </h1>
+
+              <p className="mt-5 text-zinc-500 max-w-2xl leading-relaxed">
+                Live mascot ranking and apparel demand tracking for the
+                FAiKERZ CAT GPT release.
+              </p>
+            </div>
+
+            <div className="rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-xs text-zinc-500">
+              {loading
+                ? "Loading..."
+                : `Auto refresh · ${lastUpdated || "—"}`}
+            </div>
+          </div>
+        </section>
+
+        <section className="grid md:grid-cols-3 gap-4 mb-14">
+          <div className="rounded-3xl border border-white/10 bg-zinc-950 p-6">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Unique Voters
+            </p>
+
+            <h3 className="mt-4 text-5xl font-semibold">
+              {votes.length}
+            </h3>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-zinc-950 p-6">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Mascot Selections
+            </p>
+
+            <h3 className="mt-4 text-5xl font-semibold">
+              {totalMascotVotes}
+            </h3>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-zinc-950 p-6">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Apparel Votes
+            </p>
+
+            <h3 className="mt-4 text-5xl font-semibold">
+              {totalApparelVotes}
+            </h3>
+          </div>
+        </section>
+
+        <section className="grid md:grid-cols-2 gap-4 mb-16">
+          <div className="rounded-3xl border border-white/10 bg-zinc-950 p-7">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Current Favorite
+            </p>
+
+            {topMascot && topMascot.count > 0 ? (
+              <div className="mt-6 flex items-center gap-5">
+                <img
+                  src={topMascot.image}
+                  alt={topMascot.name}
+                  className="w-24 h-24 rounded-2xl object-cover border border-white/10"
+                />
+
+                <div>
+                  <h2 className="text-3xl font-semibold">
+                    {topMascot.name}
+                  </h2>
+
+                  <p className="mt-2 text-zinc-500">
+                    {topMascot.count} votes
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-6 text-zinc-500">
+                No mascot votes yet.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-zinc-950 p-7">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Most Requested Apparel
+            </p>
+
+            {topApparel && topApparel[1] > 0 ? (
+              <div className="mt-6">
+                <h2 className="text-3xl font-semibold">
+                  {apparelLabels[topApparel[0]]}
+                </h2>
+
+                <p className="mt-2 text-zinc-500">
+                  {topApparel[1]} votes
+                </p>
+              </div>
+            ) : (
+              <p className="mt-6 text-zinc-500">
+                No apparel votes yet.
+              </p>
+            )}
+          </div>
+        </section>
+
+        <section className="mb-20">
+          <div className="mb-8">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Mascot Ranking
+            </p>
+
+            <h2 className="mt-3 text-4xl font-semibold">
+              Live Vote Ranking
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            {sortedMascots.map((cat, index) => {
+              const percentage = totalMascotVotes
+                ? (cat.count / totalMascotVotes) * 100
+                : 0;
+
+              const medalClass = medalStyles[index] || "border-white/10 bg-zinc-950";
+
+              return (
+                <div
+                  key={cat.id}
+                  className={`rounded-3xl border p-6 transition-all duration-500 ${medalClass}`}
+                >
+                  <div className="flex items-center justify-between mb-5 gap-4">
+                    <div className="flex items-center gap-4 md:gap-5">
+                      <div className="w-10 h-10 rounded-full border border-white/10 bg-black/30 flex items-center justify-center font-semibold">
+                        #{index + 1}
+                      </div>
+
+                      <img
+                        src={cat.image}
+                        alt={cat.name}
+                        className="w-16 h-16 rounded-2xl object-cover border border-white/10"
+                      />
+
+                      <div>
+                        <h3 className="text-xl font-semibold">
+                          {cat.name}
+                        </h3>
+
+                        <p className="text-sm text-zinc-500">
+                          {percentage.toFixed(1)}%
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-3xl font-semibold">
+                        {cat.count}
+                      </p>
+
+                      <p className="text-xs text-zinc-500 mt-1">
+                        votes
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="h-2 rounded-full bg-zinc-900 overflow-hidden">
+                    <div
+                      className="h-full bg-white transition-all duration-700"
+                      style={{
+                        width: `${percentage}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-8">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Apparel Demand
+            </p>
+
+            <h2 className="mt-3 text-4xl font-semibold">
+              Product Interest
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            {sortedApparel.map(([id, count]) => {
+              const percentage = totalApparelVotes
+                ? (count / totalApparelVotes) * 100
+                : 0;
+
+              return (
+                <div
+                  key={id}
+                  className="rounded-3xl border border-white/10 bg-zinc-950 p-6"
+                >
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h3 className="text-xl font-semibold">
+                        {apparelLabels[id]}
+                      </h3>
+
+                      <p className="text-sm text-zinc-500">
+                        {percentage.toFixed(1)}%
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-3xl font-semibold">
+                        {count}
+                      </p>
+
+                      <p className="text-xs text-zinc-500 mt-1">
+                        votes
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="h-2 rounded-full bg-zinc-900 overflow-hidden">
+                    <div
+                      className="h-full bg-white transition-all duration-700"
+                      style={{
+                        width: `${percentage}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}

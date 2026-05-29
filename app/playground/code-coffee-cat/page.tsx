@@ -1,63 +1,87 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import Navbar from "../../components/Navbar";
-
 import CatCard from "./components/cat-card";
-
 import { initialCats } from "./data";
-import { CatVariant } from "./types";
+import { supabase } from "@/lib/supabase";
+import { getUserId } from "./utils/user";
 
-const STORAGE_KEY = "code-coffee-cat-votes-v2";
 const USER_VOTE_KEY = "code-coffee-cat-user-vote-v2";
 
+const apparelOptions = [
+  {
+    id: "tshirt",
+    title: "T-Shirt",
+    desc: "Daily oversized fit",
+  },
+  {
+    id: "hoodie",
+    title: "Hoodie",
+    desc: "Heavyweight pullover",
+  },
+  {
+    id: "ziphoodie",
+    title: "Zip Hoodie",
+    desc: "Layered streetwear fit",
+  },
+];
+
+type VoteRow = {
+  user_id: string;
+  mascot_ids: string[];
+  apparel_type: string;
+  updated_at?: string;
+};
+
 export default function CodeCoffeeCatPage() {
-  const [cats, setCats] = useState<CatVariant[]>(initialCats);
-
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
+  const [apparelType, setApparelType] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
-
   const [mounted, setMounted] = useState(false);
-
-  const [apparelType, setApparelType] = useState<string | null>(
-    null
-  );
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedVotes = localStorage.getItem(STORAGE_KEY);
+    const loadVote = async () => {
+      try {
+        const userId = getUserId();
 
-    const savedUserVote =
-      localStorage.getItem(USER_VOTE_KEY);
+        const { data, error } = await supabase
+          .from("votes")
+          .select("user_id, mascot_ids, apparel_type, updated_at")
+          .eq("user_id", userId)
+          .maybeSingle<VoteRow>();
 
-    if (savedVotes) {
-      setCats(JSON.parse(savedVotes));
-    }
+        if (error) {
+          console.error(error);
+          setStatus("Could not load your previous vote.");
+        }
 
-    if (savedUserVote) {
-      const parsed = JSON.parse(savedUserVote);
+        if (data) {
+          setSelectedIds(data.mascot_ids || []);
+          setApparelType(data.apparel_type || null);
+          setHasVoted(true);
 
-      setSelectedIds(parsed.selectedCats || []);
+          localStorage.setItem(
+            USER_VOTE_KEY,
+            JSON.stringify({
+              selectedCats: data.mascot_ids || [],
+              apparelType: data.apparel_type || null,
+            })
+          );
+        }
+      } finally {
+        setMounted(true);
+      }
+    };
 
-      setApparelType(parsed.apparelType || null);
-
-      setHasVoted(true);
-    }
-
-    setMounted(true);
+    loadVote();
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(cats)
-    );
-  }, [cats, mounted]);
-
   const toggleCat = (id: string) => {
+    setStatus(null);
+
     setSelectedIds((prev) => {
       if (prev.includes(id)) {
         return prev.filter((item) => item !== id);
@@ -72,66 +96,50 @@ export default function CodeCoffeeCatPage() {
   };
 
   const submitVote = async () => {
-    if (selectedIds.length !== 2) return;
+    if (selectedIds.length !== 2 || !apparelType) return;
 
-    if (!apparelType) return;
+    try {
+      setLoading(true);
+      setStatus(null);
 
-    const previousVoteRaw =
-      localStorage.getItem(USER_VOTE_KEY);
+      const userId = getUserId();
 
-    const previousVotes = previousVoteRaw
-      ? JSON.parse(previousVoteRaw)
-      : null;
-
-    let updatedCats = [...cats];
-
-    // 이전 투표 차감
-    if (previousVotes?.selectedCats) {
-      updatedCats = updatedCats.map((cat) => {
-        if (
-          previousVotes.selectedCats.includes(cat.id)
-        ) {
-          return {
-            ...cat,
-            votes: Math.max(0, cat.votes - 1),
-          };
+      const { error } = await supabase.from("votes").upsert(
+        {
+          user_id: userId,
+          mascot_ids: selectedIds,
+          apparel_type: apparelType,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id",
         }
+      );
 
-        return cat;
-      });
-    }
-
-    // 새 투표 추가
-    updatedCats = updatedCats.map((cat) => {
-      if (selectedIds.includes(cat.id)) {
-        return {
-          ...cat,
-          votes: cat.votes + 1,
-        };
+      if (error) {
+        console.error(error);
+        setStatus("Vote save failed. Check Supabase policy or schema.");
+        return;
       }
 
-      return cat;
-    });
+      localStorage.setItem(
+        USER_VOTE_KEY,
+        JSON.stringify({
+          selectedCats: selectedIds,
+          apparelType,
+        })
+      );
 
-    setCats(updatedCats);
-
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(updatedCats)
-    );
-
-    localStorage.setItem(
-      USER_VOTE_KEY,
-      JSON.stringify({
-        selectedCats: selectedIds,
-        apparelType,
-      })
-    );
-
-    setHasVoted(true);
+      setHasVoted(true);
+      setStatus(hasVoted ? "Vote updated." : "Vote submitted.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!mounted) return null;
+
+  const canSubmit = selectedIds.length === 2 && !!apparelType && !loading;
 
   return (
     <main className="min-h-screen bg-black text-white px-4 md:px-6 py-10">
@@ -150,23 +158,13 @@ export default function CodeCoffeeCatPage() {
             FAiKERZ Teamwear Vote
           </p>
 
-          <h1
-            className="
-              text-3xl
-              md:text-5xl
-              font-semibold
-              tracking-[0.08em]
-              uppercase
-              text-white
-            "
-          >
+          <h1 className="text-3xl md:text-5xl font-semibold tracking-[0.08em] uppercase text-white">
             CODE. COFFEE. CAT.
           </h1>
 
           <p className="mt-4 text-zinc-400 text-sm md:text-base leading-relaxed">
-            Help decide the final CAT GPT teamwear release.
-            Pick your favorite apparel type and choose your
-            top 2 mascot variants.
+            Help decide the final CAT GPT teamwear release. Pick your
+            favorite apparel type and choose your top 2 mascot variants.
           </p>
         </section>
 
@@ -180,54 +178,23 @@ export default function CodeCoffeeCatPage() {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              {
-                id: "tshirt",
-                title: "T-Shirt",
-                desc: "Daily oversized fit",
-              },
-
-              {
-                id: "hoodie",
-                title: "Hoodie",
-                desc: "Heavyweight pullover",
-              },
-
-              {
-                id: "ziphoodie",
-                title: "Zip Hoodie",
-                desc: "Layered streetwear fit",
-              },
-            ].map((item) => {
-              const active =
-                apparelType === item.id;
+            {apparelOptions.map((item) => {
+              const active = apparelType === item.id;
 
               return (
                 <button
                   key={item.id}
-                  onClick={() =>
-                    setApparelType(item.id)
-                  }
+                  type="button"
+                  onClick={() => {
+                    setApparelType(item.id);
+                    setStatus(null);
+                  }}
                   className={`
-                    rounded-2xl
-                    border
-                    p-5
-                    text-left
-                    transition-all
-                    duration-300
-
+                    rounded-2xl border p-5 text-left transition-all duration-300
                     ${
                       active
-                        ? `
-                          border-white
-                          bg-zinc-900
-                          shadow-[0_0_24px_rgba(255,255,255,0.05)]
-                        `
-                        : `
-                          border-white/10
-                          bg-zinc-950
-                          hover:border-white/20
-                        `
+                        ? "border-white bg-zinc-900 shadow-[0_0_24px_rgba(255,255,255,0.06)]"
+                        : "border-white/10 bg-zinc-950 hover:border-white/25"
                     }
                   `}
                 >
@@ -254,9 +221,8 @@ export default function CodeCoffeeCatPage() {
           </h2>
 
           <p className="max-w-3xl text-sm text-zinc-400 leading-relaxed mb-8">
-            Vintage washed black apparel concept with
-            oversized silhouette, back graphic, sleeve
-            detail, and CAT GPT mascot branding.
+            Vintage washed black apparel concept with oversized silhouette,
+            back graphic, sleeve detail, and CAT GPT mascot branding.
           </p>
 
           <div className="rounded-3xl overflow-hidden border border-white/10 bg-zinc-950">
@@ -269,53 +235,45 @@ export default function CodeCoffeeCatPage() {
         </section>
 
         <div className="sticky top-4 z-20 mb-8 rounded-2xl border border-white/10 bg-black/80 backdrop-blur p-3 md:p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-zinc-300">
-              {selectedIds.length}/2 mascot picks
-              selected
-            </span>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <span className="text-sm font-medium text-zinc-300">
+                {selectedIds.length}/2 mascot picks selected
+              </span>
+
+              {hasVoted && (
+                <p className="mt-1 text-xs text-zinc-500">
+                  Existing vote loaded. You can update it.
+                </p>
+              )}
+            </div>
 
             <button
               type="button"
               onClick={submitVote}
-              disabled={
-                selectedIds.length !== 2 ||
-                !apparelType
-              }
+              disabled={!canSubmit}
               className={`
-                px-5
-                h-9
-                rounded-full
-                text-sm
-                font-medium
-                transition-all
-                duration-200
-
+                px-5 h-9 rounded-full text-sm font-medium transition-all duration-200
                 ${
-                  selectedIds.length === 2 &&
-                  apparelType
-                    ? `
-                      bg-zinc-200
-                      text-black
-                      hover:bg-white
-                    `
-                    : `
-                      bg-zinc-900
-                      text-zinc-600
-                      cursor-not-allowed
-                    `
+                  canSubmit
+                    ? "bg-zinc-200 text-black hover:bg-white"
+                    : "bg-zinc-900 text-zinc-600 cursor-not-allowed"
                 }
               `}
             >
-              {hasVoted
+              {loading
+                ? "Saving..."
+                : hasVoted
                 ? "Update Picks"
                 : "Submit Picks"}
             </button>
           </div>
 
-          <p className="mt-3 text-xs text-zinc-500">
-            You can update your vote later.
-          </p>
+          {status && (
+            <p className="mt-3 text-xs text-zinc-400">
+              {status}
+            </p>
+          )}
         </div>
 
         <section className="mb-6">
@@ -329,13 +287,12 @@ export default function CodeCoffeeCatPage() {
         </section>
 
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-          {cats.map((cat) => (
+          {initialCats.map((cat) => (
             <CatCard
               key={cat.id}
               cat={cat}
               selected={selectedIds.includes(cat.id)}
               disabled={selectedIds.length >= 2}
-              hasVoted={hasVoted}
               onToggle={() => toggleCat(cat.id)}
             />
           ))}

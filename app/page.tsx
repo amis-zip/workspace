@@ -31,7 +31,7 @@ export default function Home() {
               <ToolCard
                 title="FAiKERZ"
                 description="internal operations & tools"
-                color="pink"
+                color="green"
                 badge="ACTIVE"
                 icon="shield"
               />
@@ -55,8 +55,7 @@ export default function Home() {
               <ToolCard
                 title="PLAYGROUND"
                 description="fun projects & side apps"
-                color="green"
-                badge="LIVE"
+                color="pink"
                 icon="pizza"
               />
             </div>
