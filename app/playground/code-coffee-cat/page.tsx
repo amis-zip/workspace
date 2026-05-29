@@ -51,8 +51,17 @@ export default function CodeCoffeeCatPage() {
           .from("votes")
           .select("user_id, mascot_ids, apparel_type, updated_at")
           .eq("user_id", userId)
-          .maybeSingle<VoteRow>();
+          .maybeSingle();
 
+        
+          const voteData = data as VoteRow | null;
+
+        if (voteData) {
+          setSelectedIds(voteData.mascot_ids || []);
+          setApparelType(voteData.apparel_type || null);
+          setHasVoted(true);
+        }
+        
         if (error) {
           console.error(error);
           setStatus("Could not load your previous vote.");
@@ -104,6 +113,23 @@ export default function CodeCoffeeCatPage() {
 
       const userId = getUserId();
 
+    
+      const { error } = await supabase
+        .from("votes")
+        .upsert(
+         {
+            user_id: userId,
+            mascot_ids: selectedIds,
+            apparel_types: [apparelType],
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id",
+          }
+       );
+
+      console.log("SUPABASE ERROR", error);  
+      
       const { error } = await supabase.from("votes").upsert(
         {
           user_id: userId,
@@ -137,6 +163,8 @@ export default function CodeCoffeeCatPage() {
     }
   };
 
+  
+  
   if (!mounted) return null;
 
   const canSubmit = selectedIds.length === 2 && !!apparelType && !loading;

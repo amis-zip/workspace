@@ -7,7 +7,7 @@ export default function RecrawlQueuePage() {
 
   useEffect(() => {
     if (iframeRef.current) {
-      iframeRef.current.src = "/recrawl_queue_v7.html";
+      iframeRef.current.src = "/recrawl_queue_v7_1.html";
     }
   }, []);
 
