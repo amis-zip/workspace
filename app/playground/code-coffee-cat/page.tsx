@@ -42,6 +42,27 @@ export default function CodeCoffeeCatPage() {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  
+  const mockupImage =
+    apparelType === "hoodie"
+      ? "/mockups/hoodie-board.png"
+      : apparelType === "ziphoodie"
+      ? "/mockups/ziphoodie-board.png"
+      : "/mockups/tshirt-board.png";
+
+  const mockupTitle =
+    apparelType === "hoodie"
+      ? "Hoodie"
+      : apparelType === "ziphoodie"
+      ? "Zip Hoodie"
+      : "T-Shirt";
+
+  const mockupDescription =
+    apparelType === "hoodie"
+      ? "Oversized heavyweight hoodie featuring the CAT GPT collection artwork."
+      : apparelType === "ziphoodie"
+      ? "Full zip hoodie version with oversized silhouette."
+      : "Vintage washed black apparel concept with oversized silhouette.";
 
   useEffect(() => {
     const loadVote = async () => {
@@ -239,18 +260,17 @@ export default function CodeCoffeeCatPage() {
           </p>
 
           <h2 className="text-3xl font-semibold mb-4">
-            T-Shirts
+            {mockupTitle}
           </h2>
-
+        
           <p className="max-w-3xl text-sm text-zinc-400 leading-relaxed mb-8">
-            Vintage washed black apparel concept with oversized silhouette,
-            back graphic, sleeve detail, and CAT GPT mascot branding.
+            {mockupDescription}
           </p>
-
+        
           <div className="rounded-3xl overflow-hidden border border-white/10 bg-zinc-950">
             <img
-              src="/mockups/tshirt-board.png"
-              alt="CAT GPT Teamwear Mockup"
+              src={mockupImage}
+              alt={`${mockupTitle} Mockup`}
               className="w-full h-auto object-cover"
             />
           </div>
@@ -304,7 +324,7 @@ export default function CodeCoffeeCatPage() {
           </p>
 
           <h2 className="text-3xl font-semibold">
-            Pick your 2 favorite CAT GPT variants
+            Pick your 2 favorite CAT variants
           </h2>
         </section>
 

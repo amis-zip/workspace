@@ -23,7 +23,7 @@ export default function PlaygroundPage() {
         </h1>
 
         <p className="text-gray-400 mb-12">
-          fun projects & side apps
+          side apps
         </p>
 
         <div className="grid gap-4">
