@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { initialCats } from "../data";
 
 type Vote = {
@@ -24,53 +24,36 @@ export default function AdminPage() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [debugError, setDebugError] = useState<string | null>(null);
 
-  const fetchVotes = useCallback(async () => {
+  const fetchVotes = async () => {
     setLoading(true);
     setDebugError(null);
 
-    try {
-      const response = await fetch("/api/code-coffee-cat/votes", {
-        cache: "no-store",
-      });
+    const response = await fetch("/api/code-coffee-cat/votes", {
+      cache: "no-store",
+    });
 
-      const result = (await response.json()) as {
-        votes?: Vote[];
-        error?: string | null;
-        usingServiceRole?: boolean;
-      };
+    const result = await response.json();
 
-      if (!response.ok || result.error) {
-        throw new Error(result.error || "Failed to load votes.");
-      }
-
-      setVotes(result.votes || []);
-      setLastUpdated(new Date().toLocaleTimeString());
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to load votes.";
-
-      console.error("ADMIN VOTES API ERROR:", error);
+    if (!response.ok) {
+      console.error("ADMIN VOTES API ERROR:", result);
       setVotes([]);
-      setDebugError(message);
-    } finally {
+      setDebugError(result.error || "Failed to load votes.");
       setLoading(false);
+      return;
     }
-  }, []);
+
+    setVotes((result.votes || []) as Vote[]);
+    setLastUpdated(new Date().toLocaleTimeString());
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      void fetchVotes();
-    }, 0);
+    fetchVotes();
 
-    const interval = setInterval(() => {
-      void fetchVotes();
-    }, 5000);
+    const interval = setInterval(fetchVotes, 5000);
 
-    return () => {
-      clearTimeout(timeout);
-      clearInterval(interval);
-    };
-  }, [fetchVotes]);
+    return () => clearInterval(interval);
+  }, []);
 
   const mascotCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -96,9 +79,11 @@ export default function AdminPage() {
     };
 
     votes.forEach((vote) => {
-      vote.apparel_types?.forEach((apparel) => {
-        counts[apparel] = (counts[apparel] || 0) + 1;
-      });
+      const apparel = vote.apparel_types?.[0];
+
+      if (!apparel) return;
+
+      counts[apparel] = (counts[apparel] || 0) + 1;
     });
 
     return counts;
@@ -167,7 +152,7 @@ export default function AdminPage() {
         {debugError && (
           <section className="mb-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-red-300">
-              Supabase Admin Error
+              Admin Votes Error
             </p>
 
             <p className="mt-2 text-sm text-red-200">

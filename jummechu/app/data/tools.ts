@@ -2,11 +2,11 @@ export const faikerzTools = [
 
   {
     title: "Market Data Extractor",
-    description: "marketplace HTML to DB-ready Excel",
+    description: "marketplace product data extraction tool",
     href: "/faikerz/market-data-extractor",
-    color: "green",
+    color: "blue",
     badge: "NEW",
-    icon: "radar",
+    icon: "database",
   },
   {
     title: "Recrawl Queue",

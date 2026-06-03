@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recrawl Queue · 재크롤링 대상 관리</title>
+<style>
+  /* 폰트: Gowun Dodum + Fraunces (구글 폰트). 온라인에서 받아오며, 
+     오프라인·차단 시 시스템 폰트로 자동 대체됨 — 도구 기능에는 영향 없음 */
+  @import url('https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
+
+  :root {
+    --font-body:'Gowun Dodum',-apple-system,BlinkMacSystemFont,'Malgun Gothic','맑은 고딕',
+                'Apple SD Gothic Neo','Segoe UI',sans-serif;
+    --font-head:'Fraunces','Gowun Dodum',serif;
+    --milk:#fff5f7; --milk-deep:#ffe3ea; --berry:#f7a8c0; --berry-deep:#e86f95;
+    --berry-text:#b04866; --ink:#4a3b41; --ink-soft:#8a767d; --line:#f3d4dd;
+    --card:#fff; --yellow:#fff4cc; --yellow-line:#f0d98a; --yellow-text:#8a6d12;
+    --sky:#d6ecf7; --sky-line:#9fcfe6; --sky-text:#2d6a8a;
+    --gray-soft:#eeeaec; --shadow:0 4px 18px rgba(232,111,149,.13);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:var(--font-body); color:var(--ink); line-height:1.55;
+    background:radial-gradient(circle at 12% 8%,#ffe9f0 0,transparent 42%),
+               radial-gradient(circle at 88% 92%,#ffeef3 0,transparent 40%),var(--milk);
+    min-height:100vh; padding:28px 20px 70px;
+  }
+  .wrap{max-width:1060px;margin:0 auto;}
+
+  header.app{text-align:center;margin-bottom:6px;}
+  header.app h1{font-family:var(--font-head);font-weight:600;font-size:1.9rem;
+    color:var(--berry-text);letter-spacing:-.01em;}
+  header.app p{color:var(--ink-soft);font-size:.88rem;margin-top:4px;}
+
+  .tabbar{position:sticky;top:0;z-index:30;margin-top:16px;padding:8px 0;}
+  .seg{display:flex;gap:6px;background:var(--milk-deep);padding:5px;border-radius:14px;
+    box-shadow:var(--shadow);}
+  .seg.center{width:max-content;margin:0 auto;}
+  .seg button{background:transparent;color:var(--berry-text);border-radius:10px;
+    padding:9px 20px;font-size:.9rem;}
+  .seg button.on{background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.1);font-weight:600;}
+  .seg.sub{box-shadow:none;display:inline-flex;}
+  .seg.sub button{padding:7px 14px;font-size:.85rem;}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:18px;
+    box-shadow:var(--shadow);padding:22px 24px;margin-top:16px;}
+  .panel.alert{border-color:var(--yellow-line);
+    background:linear-gradient(180deg,#fffaf0 0,#fff 80px);}
+  .panel h2{font-family:var(--font-head);font-size:1.12rem;color:var(--berry-text);
+    margin-bottom:4px;display:flex;align-items:center;gap:7px;}
+  .panel .hint{color:var(--ink-soft);font-size:.83rem;margin-bottom:14px;}
+  .panel .hint:last-child{margin-bottom:0;}
+
+  textarea{width:100%;min-height:160px;border:1.5px solid var(--line);border-radius:12px;
+    padding:13px 15px;font-family:ui-monospace,'D2Coding','Consolas',monospace;font-size:.9rem;resize:vertical;
+    background:var(--milk);color:var(--ink);transition:border-color .15s;}
+  textarea:focus{outline:none;border-color:var(--berry);box-shadow:0 0 0 3px rgba(247,168,192,.25);}
+
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;}
+  .row.between{justify-content:space-between;}
+  .row.end{justify-content:flex-end;}
+
+  input[type=text]{border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;
+    font-family:var(--font-body);font-size:.88rem;background:var(--milk);color:var(--ink);
+    transition:border-color .15s;width:100%;}
+  input[type=text]:focus{outline:none;border-color:var(--berry);
+    box-shadow:0 0 0 3px rgba(247,168,192,.25);}
+  label.fld{font-size:.82rem;color:var(--ink-soft);display:flex;flex-direction:column;gap:5px;}
+
+  button{font-family:var(--font-body);border:none;border-radius:10px;padding:10px 18px;
+    font-size:.88rem;cursor:pointer;transition:transform .08s,filter .15s,box-shadow .15s;
+    display:inline-flex;align-items:center;gap:6px;}
+  button:active{transform:translateY(1px);}
+  button.primary{background:var(--berry-deep);color:#fff;box-shadow:0 3px 10px rgba(232,111,149,.35);}
+  button.primary:hover:not(:disabled){filter:brightness(1.07);box-shadow:0 4px 14px rgba(232,111,149,.45);}
+  button.ghost{background:var(--milk-deep);color:var(--berry-text);}
+  button.ghost:hover:not(:disabled){filter:brightness(.97);}
+  button.tiny{padding:6px 12px;font-size:.79rem;}
+  button:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;}
+
+  .result-string{background:var(--milk);border:1.5px dashed var(--berry);border-radius:12px;
+    padding:14px 16px;font-family:monospace;font-size:.86rem;word-break:break-all;
+    color:var(--ink);line-height:1.75;}
+  .copybar{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;}
+  .copybar .cnt{font-size:.8rem;color:var(--ink-soft);}
+
+  /* 제외 영역 (metadata 에러 번호 일회성 필터) */
+  .exclude-toggle{background:none;border:none;color:var(--berry-text);font-family:var(--font-body);
+    font-size:.82rem;cursor:pointer;padding:6px 0;margin-top:6px;text-decoration:underline;
+    text-decoration-color:var(--berry);text-underline-offset:3px;}
+  .exclude-toggle:hover{color:var(--ink);}
+  .exclude-box{background:#fff7fb;border:1px dashed var(--berry);border-radius:10px;
+    padding:12px 14px;margin-top:8px;}
+  .exclude-box textarea{width:100%;min-height:60px;border:1px solid #f0d4e0;border-radius:8px;
+    padding:8px 10px;font-family:monospace;font-size:.82rem;resize:vertical;background:#fff;
+    color:var(--ink);box-sizing:border-box;}
+  .exclude-summary{font-size:.8rem;color:var(--ink-soft);margin-top:6px;}
+  .exclude-summary b{color:var(--berry-text);}
+  .exclude-summary.warn{color:#c44;}
+
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.86rem;}
+  th{background:var(--berry);color:#fff;padding:10px 9px;text-align:left;font-weight:normal;
+    font-size:.83rem;}
+  th:first-child{border-radius:9px 0 0 9px;}
+  th:last-child{border-radius:0 9px 9px 0;}
+  td{padding:9px;border-bottom:1px solid var(--line);}
+  tbody tr{transition:background .12s;}
+  tbody tr:hover{background:var(--milk);}
+  tr:last-child td{border-bottom:none;}
+  td.click{cursor:pointer;color:var(--berry-deep);}
+  td.click:hover{text-decoration:underline;}
+
+  .tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.76rem;
+    white-space:nowrap;}
+  .tag.new{background:var(--sky);color:var(--sky-text);border:1px solid var(--sky-line);}
+  .tag.persist{background:var(--yellow);color:var(--yellow-text);border:1px solid var(--yellow-line);}
+  .tag.resolved{background:var(--gray-soft);color:#767078;}
+  .tag.streak{background:var(--milk-deep);color:var(--berry-text);}
+  .tag.streak.hot{background:var(--berry-deep);color:#fff;}
+  .tag.kind{background:#efe7f5;color:#7a5a92;border:1px solid #ddc9e8;}
+
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .stat{background:var(--milk);border:1px solid var(--line);border-radius:13px;
+    padding:13px 15px;}
+  .stat.hot{background:#fff3f6;border-color:var(--berry);}
+  .stat .num{font-family:var(--font-head);font-size:1.6rem;color:var(--berry-text);
+    line-height:1.1;}
+  .stat .lbl{font-size:.77rem;color:var(--ink-soft);margin-top:2px;}
+
+  .empty{color:var(--ink-soft);font-size:.9rem;padding:30px 16px;text-align:center;}
+  .empty .big{font-size:2rem;display:block;margin-bottom:8px;}
+  .empty button{margin-top:14px;}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+    background:var(--berry-text);color:#fff;padding:11px 22px;border-radius:999px;
+    font-size:.86rem;box-shadow:0 6px 22px rgba(0,0,0,.25);z-index:60;
+    transition:transform .28s cubic-bezier(.2,.9,.3,1.2);}
+  .toast.show{transform:translateX(-50%) translateY(0);}
+
+  .notice{border-radius:11px;padding:11px 14px;font-size:.81rem;margin-top:14px;}
+  .notice.warn{background:var(--yellow);border:1px solid var(--yellow-line);color:var(--yellow-text);}
+  .notice.info{background:var(--sky);border:1px solid var(--sky-line);color:var(--sky-text);}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--milk-deep);
+    color:var(--berry-text);border-radius:999px;padding:6px 13px;font-size:.82rem;}
+  .pill b{font-size:.95rem;}
+  .mono{font-family:monospace;}
+  .hide{display:none;}
+  a.link{color:var(--berry-deep);font-size:.83rem;text-decoration:none;}
+  a.link:hover{text-decoration:underline;}
+  .divider{height:1px;background:var(--line);margin:16px 0;}
+
+  @media(max-width:680px){
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <h1>🚀 Recrawl Queue</h1>
+    <p>재크롤링 대상 감시번호 관리 · Web SNS / Store Watch 공통</p>
+  </header>
+
+  <div class="tabbar">
+    <div class="seg center">
+      <button id="tabAddBtn" class="on" onclick="setTab('add')">＋ 새 회차 추가</button>
+      <button id="tabHistBtn" onclick="setTab('history')">📊 회차 분석</button>
+    </div>
+  </div>
+
+  <!-- ADD TAB -->
+  <div id="tabAdd">
+    <div class="panel">
+      <h2>공란 번호 입력</h2>
+      <p class="hint">발견일시가 비어 있는 감시번호 = 누락건. 두 가지 입력 방식 중 편한 걸 쓰세요.</p>
+      <div class="seg sub" style="margin-bottom:12px;">
+        <button id="modeConsoleBtn" class="on" onclick="setMode('console')">콘솔 표 붙여넣기</button>
+        <button id="modeNumBtn" onclick="setMode('numbers')">공란 번호만 직접 입력</button>
+      </div>
+      <p class="hint" id="modeHint"></p>
+      <textarea id="input" oninput="refreshPreview()"></textarea>
+
+      <div class="row">
+        <label class="fld" style="flex:2;min-width:200px;">
+          회차 이름 <span style="opacity:.7;">(선택)</span>
+          <input type="text" id="label" placeholder="예: 3회차 / 5-27 조사">
+        </label>
+        <label class="fld" style="flex:1;min-width:130px;">
+          감시 종류
+          <span class="seg sub" style="margin:0;">
+            <button id="kindSnsBtn" class="on" onclick="setKind('sns')" type="button">SNS</button>
+            <button id="kindStoreBtn" onclick="setKind('store')" type="button">Store</button>
+          </span>
+        </label>
+        <label class="fld" style="flex:1;min-width:130px;">
+          companyNo
+          <input type="text" id="companyNo" placeholder="예: 401" inputmode="numeric">
+        </label>
+      </div>
+
+      <div class="row between" style="align-items:center;">
+        <span class="pill" id="previewPill">추출 미리보기 · 공란 0건</span>
+      </div>
+
+      <div id="previewBox" class="hide">
+        <div class="divider"></div>
+        <div class="hint" style="margin-bottom:6px;">재크롤링 문자열 (스페이스 구분, 내림차순)</div>
+        <div class="result-string" id="previewString"></div>
+        <div class="copybar">
+          <button class="ghost tiny" onclick="copyText(getText('previewString'),this)">📋 문자열 복사</button>
+          <span class="cnt" id="previewCnt"></span>
+        </div>
+        <button class="exclude-toggle" type="button" onclick="toggleExclude('preview')">
+          <span id="excludeTogglePreviewLabel">＋ metadata 에러 번호 제외하기</span>
+        </button>
+        <div id="excludeBoxPreview" class="exclude-box hide">
+          <div class="hint" style="margin-bottom:6px;">
+            Prefect UI 에러 메시지를 통째로 붙여넣으면 괄호 안 watch_no만 자동 추출해 문자열에서 뺍니다.
+            <br><span style="color:var(--ink-soft);">예: <code>실행 실패: ... (watch_no: 19365, 19364, ...)</code> · 회차 저장과는 무관한 일회성 필터입니다.</span>
+          </div>
+          <textarea id="excludeInputPreview" oninput="applyExclude('preview')"
+            placeholder="에러 메시지를 붙여넣거나, 제외할 번호를 직접 입력하세요"></textarea>
+          <div class="exclude-summary" id="excludeSummaryPreview"></div>
+        </div>
+      </div>
+
+      <div class="row end" style="margin-top:18px;">
+        <button class="primary" id="saveBtn" onclick="saveSession()" disabled>이 회차 저장</button>
+      </div>
+
+      <div class="notice warn">
+        ⚠️ 이 도구는 <b>입력된 번호만</b> 압니다. 콘솔에서 페이지를 빠뜨리면 도구도 그 누락을
+        알 수 없어요. 조사 범위의 완전성은 사람이 확인해야 합니다. 저장 데이터는
+        <b>이 브라우저에만</b> 보관되니, 분석 탭에서 JSON 백업을 주기적으로 받아두세요.
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="tabHist" class="hide"></div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ================= 저장소 =================
+const KEY='chanel_sns_sessions_v2';     // 회차 데이터 (v2~v5 호환 — 바꾸면 기존 데이터 못 읽음)
+const PREF_KEY='recrawl_queue_pref_v5'; // 마지막 종류·companyNo·구버전안내 확인 여부
+function loadSessions(){
+  try{ const r=localStorage.getItem(KEY); return r?JSON.parse(r):[]; }catch{ return []; }
+}
+function saveSessions(list){
+  try{ localStorage.setItem(KEY,JSON.stringify(list)); return true; }catch{ return false; }
+}
+function loadPref(){
+  try{ const r=localStorage.getItem(PREF_KEY); return r?JSON.parse(r):{}; }catch{ return {}; }
+}
+function savePref(p){
+  try{ localStorage.setItem(PREF_KEY,JSON.stringify(p)); }catch{}
+}
+let sessions=loadSessions();
+let mode='console';
+let kind='sns';
+
+// ================= 콘솔 링크 =================
+function listUrl(k,companyNo){
+  const base = k==='store'
+    ? 'http://console.faikerz.com/Admin/TextWatch/List'
+    : 'http://console.faikerz.com/Admin/SNSWatch/List';
+  return base+'?companyNo='+encodeURIComponent(companyNo||'')+'&pageNo=1';
+}
+function kindLabel(k){ return k==='store'?'Store':'SNS'; }
+
+// ================= 파싱 =================
+function parseConsoleRows(text){
+  const out=[];
+  for(const raw of text.split(/\n/)){
+    const line=raw.trim(); if(!line) continue;
+    const m=line.match(/\b(\d{4,6})\b/); if(!m) continue;
+    out.push({watchNo:m[1],blank:!/\d{4}-\d{2}-\d{2}/.test(line)});
+  }
+  return out;
+}
+function parseNumbersOnly(text){
+  return (text.match(/\d{4,6}/g)||[]).map(n=>({watchNo:n,blank:true}));
+}
+function uniqueBlanks(rows){
+  const set=new Set();
+  rows.forEach(r=>{ if(r.blank) set.add(r.watchNo); });
+  return [...set].sort((a,b)=>Number(b)-Number(a));
+}
+
+// ================= 헬퍼 =================
+function getText(id){ return document.getElementById(id).textContent; }
+function esc(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+let toastTimer=null;
+function flash(m){
+  const t=document.getElementById('toast');
+  t.textContent=m; t.classList.add('show');
+  clearTimeout(toastTimer);
+  // 메시지 길이에 따라 2.3~4초 (긴 메시지일수록 오래 표시)
+  const duration=Math.min(4000,Math.max(2300,m.length*60));
+  toastTimer=setTimeout(()=>t.classList.remove('show'),duration);
+}
+function copyText(txt,btn){
+  navigator.clipboard.writeText(txt).then(()=>{
+    flash('복사됨 ✓');
+    if(btn){ const o=btn.innerHTML; btn.innerHTML='✓ 복사됨';
+      setTimeout(()=>btn.innerHTML=o,1400); }
+  },()=>flash('복사 실패 — 직접 선택해 복사하세요'));
+}
+
+// ================= 제외 기능 (metadata 에러 번호 일회성 필터) =================
+// 저장에 영향 없음. 화면 표시·복사용 문자열에서만 빼는 임시 필터.
+// 회차 데이터(sessions)에는 절대 손대지 않음.
+//
+// 입력 패턴 2가지 모두 지원:
+//  ① 에러 메시지 전체: "...(watch_no: 19365, 19364, 19011, ...)" → 마지막 괄호 안 숫자만 추출
+//  ② 번호만 직접: "19365 19364 19011" 또는 콤마 구분도 OK
+function parseExcludeNumbers(raw){
+  if(!raw||!raw.trim()) return [];
+  // ① 괄호가 있으면 마지막 괄호 안만 사용 (에러 메시지 자동 추출)
+  //    여러 괄호가 있을 수 있어 마지막 것을 잡음 (보통 watch_no 목록이 맨 뒤)
+  let text=raw;
+  const parens=[...raw.matchAll(/\(([^)]+)\)/g)];
+  if(parens.length>0){
+    text=parens[parens.length-1][1];
+  }
+  // ② 4~6자리 숫자만 추출 (watch_no 자릿수 범위)
+  const nums=text.match(/\d{4,6}/g)||[];
+  // 중복 제거 + 정수화
+  return [...new Set(nums.map(n=>parseInt(n,10)))];
+}
+
+// 두 위치 공용 — which는 'preview' 또는 'latest'
+function toggleExclude(which){
+  const w=which.charAt(0).toUpperCase()+which.slice(1); // Preview / Latest
+  const box=document.getElementById('excludeBox'+w);
+  const label=document.getElementById('excludeToggle'+w+'Label');
+  const hidden=box.classList.contains('hide');
+  if(hidden){
+    box.classList.remove('hide');
+    label.textContent='− 제외 입력 접기';
+  } else {
+    box.classList.add('hide');
+    label.textContent='＋ metadata 에러 번호 제외하기';
+    // 접을 때 입력 비우고 원래 문자열로 복원
+    const ta=document.getElementById('excludeInput'+w);
+    if(ta && ta.value){ ta.value=''; applyExclude(which); }
+  }
+}
+
+// 원본 문자열(제외 전)을 잃지 않으려고 data-original 속성에 보관
+function applyExclude(which){
+  const w=which.charAt(0).toUpperCase()+which.slice(1);
+  const stringEl=document.getElementById(which+'String');
+  const cntEl=document.getElementById(which+'Cnt');
+  const summary=document.getElementById('excludeSummary'+w);
+  const ta=document.getElementById('excludeInput'+w);
+  if(!stringEl||!ta) return;
+
+  // 원본 백업 (최초 1회)
+  if(!stringEl.dataset.original){
+    stringEl.dataset.original=stringEl.textContent;
+    if(cntEl) stringEl.dataset.originalCnt=cntEl.textContent;
+  }
+  const originalNums=stringEl.dataset.original.split(/\s+/).filter(Boolean)
+    .map(n=>parseInt(n,10)).filter(n=>!isNaN(n));
+
+  const excludeList=parseExcludeNumbers(ta.value);
+  if(excludeList.length===0){
+    // 입력 없음 → 원래대로
+    stringEl.textContent=stringEl.dataset.original;
+    if(cntEl && stringEl.dataset.originalCnt) cntEl.textContent=stringEl.dataset.originalCnt;
+    summary.textContent='';
+    summary.classList.remove('warn');
+    return;
+  }
+  const excludeSet=new Set(excludeList);
+  const kept=originalNums.filter(n=>!excludeSet.has(n));
+  const actuallyExcluded=originalNums.filter(n=>excludeSet.has(n));
+  const notInList=excludeList.filter(n=>!originalNums.includes(n));
+
+  stringEl.textContent=kept.join(' ');
+  if(cntEl) cntEl.textContent=kept.length+'개 번호';
+
+  // 요약 표시
+  let msg='입력에서 <b>'+excludeList.length+'개</b> 번호 인식 · '
+    +'리스트에서 <b>'+actuallyExcluded.length+'개</b> 제외 → '
+    +'결과 <b>'+kept.length+'개</b>';
+  if(notInList.length>0){
+    msg+=' <span style="color:var(--ink-soft);">('+notInList.length+'개는 원래 리스트에 없던 번호: '
+      +notInList.slice(0,5).join(', ')+(notInList.length>5?' …':'')+')</span>';
+  }
+  summary.innerHTML=msg;
+  summary.classList.toggle('warn',actuallyExcluded.length===0);
+}
+
+function setMode(m){
+  mode=m;
+  document.getElementById('modeConsoleBtn').classList.toggle('on',m==='console');
+  document.getElementById('modeNumBtn').classList.toggle('on',m==='numbers');
+  document.getElementById('modeHint').textContent = m==='console'
+    ? '콘솔 리스트의 행을 그대로 복사해 붙여넣으세요. 날짜가 없는 행을 자동으로 공란으로 분류합니다. (감시번호는 각 행 첫 4~6자리 숫자로 인식) ※ 계정명에 YYYY-MM-DD 형태 문자열이 들어간 행은 드물게 공란인데도 정상으로 분류될 수 있으니, 미리보기의 공란 건수를 한 번 확인하세요.'
+    : '공란 감시번호만 스페이스·콤마·줄바꿈으로 구분해 입력하세요. 예: 20151 20150 19688';
+  document.getElementById('input').placeholder = m==='console'
+    ? '20151\t@uniquefashionshop3\n20148\t@lovecharlotte\t2026-05-11 21:37:12\n20147\t@luxurygoods05\n…'
+    : '20151 20150 20149 19688 …';
+  refreshPreview();
+}
+function setKind(k){
+  kind=k;
+  document.getElementById('kindSnsBtn').classList.toggle('on',k==='sns');
+  document.getElementById('kindStoreBtn').classList.toggle('on',k==='store');
+}
+function setTab(t){
+  document.getElementById('tabAddBtn').classList.toggle('on',t==='add');
+  document.getElementById('tabHistBtn').classList.toggle('on',t==='history');
+  document.getElementById('tabAdd').classList.toggle('hide',t!=='add');
+  document.getElementById('tabHist').classList.toggle('hide',t!=='history');
+  if(t==='history') renderHistory();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function currentBlanks(){
+  const text=document.getElementById('input').value;
+  const parsed=mode==='console'?parseConsoleRows(text):parseNumbersOnly(text);
+  return {blanks:uniqueBlanks(parsed),total:parsed.length};
+}
+function refreshPreview(){
+  const {blanks,total}=currentBlanks();
+  document.getElementById('previewPill').innerHTML=
+    '추출 미리보기 · 공란 <b>'+blanks.length+'</b>건'
+    +(mode==='console'&&total>0?(' / 전체 '+total+'행'):'');
+  const box=document.getElementById('previewBox');
+  if(blanks.length>0){
+    box.classList.remove('hide');
+    const stringEl=document.getElementById('previewString');
+    stringEl.textContent=blanks.join(' ');
+    document.getElementById('previewCnt').textContent=blanks.length+'개 번호';
+    // 원본이 바뀌었으니 제외 백업 리셋 후, 제외 입력이 살아 있으면 재적용
+    delete stringEl.dataset.original;
+    delete stringEl.dataset.originalCnt;
+    const excludeTa=document.getElementById('excludeInputPreview');
+    if(excludeTa && excludeTa.value.trim()) applyExclude('preview');
+  }else{
+    box.classList.add('hide');
+  }
+  const btn=document.getElementById('saveBtn');
+  btn.disabled=blanks.length===0;
+  btn.textContent=blanks.length>0?('이 회차 저장 · '+blanks.length+'건'):'이 회차 저장';
+}
+
+// ================= 액션 =================
+function saveSession(){
+  const {blanks}=currentBlanks();
+  if(blanks.length===0){ flash('추출된 공란 번호가 없어요'); return; }
+  const companyNo=document.getElementById('companyNo').value.trim();
+  if(!companyNo){
+    flash('companyNo를 입력해 주세요');
+    document.getElementById('companyNo').focus();
+    return;
+  }
+  // 중복 저장 방어 — 직전 회차와 종류·companyNo·공란 묶음이 모두 같으면 의심
+  const prev=sessions[sessions.length-1];
+  if(prev){
+    const sameSet = prev.blanks.length===blanks.length
+      && prev.blanks.slice().sort().join(',')===blanks.slice().sort().join(',');
+    if(sameSet && (prev.kind||'sns')===kind && (prev.companyNo||'')===companyNo){
+      if(!confirm('직전 회차('+prev.label+')와 종류·companyNo·공란 번호가 모두 같습니다.\n'
+        +'같은 조사분을 두 번 저장하면 "연속 누락" 횟수가 실제보다 부풀려집니다.\n\n'
+        +'그래도 별개 회차로 저장할까요?')){
+        flash('저장 취소됨');
+        return;
+      }
+    }
+  }
+  const round=sessions.length+1;
+  const labelVal=document.getElementById('label').value.trim();
+  sessions.push({
+    round, label:labelVal||(round+'회차'),
+    date:new Date().toISOString().slice(0,10),
+    kind, companyNo, blanks
+  });
+  const ok=saveSessions(sessions);
+  savePref({kind,companyNo});
+
+  // 토스트 메시지 — 제외 필터가 적용 중이면 함께 표시 (저장 데이터에는 영향 없음)
+  let toastMsg=round+'회차 저장 완료 · 공란 '+blanks.length+'건 🩷';
+  const excludeTa=document.getElementById('excludeInputPreview');
+  if(excludeTa && excludeTa.value.trim()){
+    const excludeList=parseExcludeNumbers(excludeTa.value);
+    const excludeSet=new Set(excludeList);
+    const actuallyExcluded=blanks.filter(n=>excludeSet.has(n)).length;
+    if(actuallyExcluded>0){
+      toastMsg=round+'회차 저장 완료 · 공란 '+blanks.length+'건 🩷 '
+        +'(그중 '+actuallyExcluded+'건 제외 후 '+(blanks.length-actuallyExcluded)+'건 전송 예정)';
+    }
+  }
+  flash(ok?toastMsg:'저장 실패 (브라우저 저장소 오류)');
+  document.getElementById('input').value='';
+  document.getElementById('label').value='';
+  refreshPreview();
+  setTab('history');
+}
+function deleteSession(round){
+  if(!confirm(round+'회차를 삭제할까요? 되돌릴 수 없습니다.')) return;
+  sessions=sessions.filter(s=>s.round!==round).map((s,i)=>({...s,round:i+1}));
+  saveSessions(sessions);
+  flash('회차 삭제됨');
+  renderHistory();
+}
+function exportJSON(){
+  if(sessions.length===0){ flash('내보낼 회차가 없어요'); return; }
+  const blob=new Blob([JSON.stringify(sessions,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='recrawl_queue_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  flash('JSON 백업 내보내기 완료');
+}
+function importJSON(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      if(!Array.isArray(data)) throw new Error();
+      sessions=data.map((s,i)=>({...s,round:i+1}));
+      saveSessions(sessions);
+      flash(sessions.length+'개 회차 불러오기 완료');
+      renderHistory();
+    }catch{ flash('불러오기 실패 — 올바른 백업 파일이 아니에요'); }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+
+// ================= 분석 렌더 =================
+function renderHistory(){
+  const root=document.getElementById('tabHist');
+  if(sessions.length===0){
+    root.innerHTML='<div class="panel"><div class="empty">'
+      +'<span class="big">🩷</span>아직 저장된 회차가 없어요.<br>'
+      +'첫 조사 결과를 입력하면 회차 추적이 시작됩니다.'
+      +'<br><button class="primary" onclick="setTab(\'add\')">＋ 첫 회차 추가하러 가기</button>'
+      +'</div></div>';
+    return;
+  }
+  const latest=sessions[sessions.length-1];
+  const prev=sessions.length>=2?sessions[sessions.length-2]:null;
+  const prevSet=prev?new Set(prev.blanks):new Set();
+
+  const analysis=latest.blanks.map(no=>{
+    let streak=0;
+    for(let i=sessions.length-1;i>=0;i--){
+      if(sessions[i].blanks.includes(no)) streak++; else break;
+    }
+    const status=!prev?'first':(prevSet.has(no)?'persist':'new');
+    return {no,streak,status};
+  });
+  let resolved=[];
+  if(prev){
+    const latestSet=new Set(latest.blanks);
+    resolved=prev.blanks.filter(no=>!latestSet.has(no));
+  }
+  const persistCount=analysis.filter(a=>a.status==='persist').length;
+  const newCount=analysis.filter(a=>a.status==='new').length;
+  const stubborn=analysis.filter(a=>a.streak>=3).sort((a,b)=>b.streak-a.streak);
+  const latestString=latest.blanks.join(' ');
+  const lkind=latest.kind||'sns';
+  const lcompany=latest.companyNo||'';
+
+  let html='';
+
+  // ── 1. 끈질긴 누락건 ──
+  if(stubborn.length>0){
+    html+='<div class="panel alert"><h2>🩷 끈질긴 누락건 · '+stubborn.length+'건</h2>'
+      +'<p class="hint">3회 이상 연속으로 안 잡힌 번호입니다. 재크롤링을 반복해도 계속 누락된다면 '
+      +'단순 누락이 아니라 계정 삭제·URL 변경·봇 차단 등 <b>구조적 원인</b>일 가능성이 높아요. '
+      +'재크롤링 대신 콘솔에서 직접 확인하시는 걸 권합니다. '
+      +'<b>감시번호를 클릭하면 복사</b>되니, 콘솔에서 검색에 쓰세요.</p>'
+      +'<table><thead><tr><th>감시번호</th><th>연속 누락</th></tr></thead><tbody>';
+    for(const s of stubborn){
+      const hot=s.streak>=4?' hot':'';
+      html+='<tr><td class="mono click" onclick="copyText(\''+esc(s.no)+'\',null)" title="클릭하면 복사">'
+        +esc(s.no)+'</td>'
+        +'<td><span class="tag streak'+hot+'">'+s.streak+'회 연속</span></td></tr>';
+    }
+    html+='</tbody></table></div>';
+  }
+
+  // ── 2. 최신 회차 요약 ──
+  html+='<div class="panel"><h2>📊 '+esc(latest.label)+' 요약 '
+    +'<span class="tag kind">'+kindLabel(lkind)+'</span></h2>'
+    +'<p class="hint">'+esc(latest.date)+' 저장 · companyNo '+esc(lcompany||'미입력')+' · '
+    +(prev?('아래 신규/지속/해결은 <b>직전 회차('+esc(prev.label)+')</b>에 입력된 번호와만 비교한 결과예요.')
+          :'첫 회차라 비교 대상이 없습니다.')+'</p>'
+    +'<div class="stat-grid">'
+    +'<div class="stat hot"><div class="num">'+latest.blanks.length+'</div><div class="lbl">이번 공란 총계</div></div>'
+    +'<div class="stat"><div class="num">'+(prev?newCount:'—')+'</div><div class="lbl">직전 대비 신규</div></div>'
+    +'<div class="stat"><div class="num">'+(prev?persistCount:'—')+'</div><div class="lbl">직전에 이어 지속</div></div>'
+    +'<div class="stat"><div class="num">'+(prev?resolved.length:'—')+'</div><div class="lbl">직전 대비 해결</div></div>'
+    +'</div>'
+    +'<div class="divider"></div>'
+    +'<div class="hint" style="margin-bottom:6px;">재크롤링 문자열 (이번 회차)</div>'
+    +'<div class="result-string" id="latestString">'+esc(latestString)+'</div>'
+    +'<div class="copybar"><button class="ghost tiny" onclick="copyText(getText(\'latestString\'),this)">📋 문자열 복사</button>'
+    +'<span class="cnt" id="latestCnt">'+latest.blanks.length+'개 번호</span>'
+    +'<a class="link" target="_blank" href="'+esc(listUrl(lkind,lcompany))+'">콘솔 '+kindLabel(lkind)+' 리스트 열기 ↗</a>'
+    +'</div>'
+    +'<button class="exclude-toggle" type="button" onclick="toggleExclude(\'latest\')">'
+    +'<span id="excludeToggleLatestLabel">＋ metadata 에러 번호 제외하기</span></button>'
+    +'<div id="excludeBoxLatest" class="exclude-box hide">'
+    +'<div class="hint" style="margin-bottom:6px;">'
+    +'Prefect UI 에러 메시지를 통째로 붙여넣으면 괄호 안 watch_no만 자동 추출해 문자열에서 뺍니다.'
+    +'<br><span style="color:var(--ink-soft);">회차 저장과는 무관한 일회성 필터입니다 — 저장된 회차 데이터는 그대로 보존됩니다.</span>'
+    +'</div>'
+    +'<textarea id="excludeInputLatest" oninput="applyExclude(\'latest\')" '
+    +'placeholder="에러 메시지를 붙여넣거나, 제외할 번호를 직접 입력하세요"></textarea>'
+    +'<div class="exclude-summary" id="excludeSummaryLatest"></div>'
+    +'</div>';
+  if(prev){
+    html+='<div class="notice info">ℹ️ “신규”는 직전 회차 입력분에 없던 번호라는 뜻일 뿐, '
+      +'실제로 새로 생긴 누락이라는 보장은 아닙니다. 회차마다 조사한 감시번호 범위가 다르면 '
+      +'이전에 조사하지 않았던 번호도 “신규”로 잡힙니다.</div>';
+  }
+  if(prev && (prev.kind||'sns')!==lkind){
+    html+='<div class="notice warn">⚠️ 직전 회차는 <b>'+kindLabel(prev.kind||'sns')
+      +'</b>, 이번 회차는 <b>'+kindLabel(lkind)+'</b>입니다. 감시 종류가 다른 회차끼리는 '
+      +'신규/지속 비교가 의미 없습니다. 같은 종류끼리 회차를 쌓아 비교하세요.</div>';
+  }
+  html+='</div>';
+
+  // ── 3. 최신 회차 상세 ──
+  html+='<div class="panel"><h2>최신 회차 상세</h2>'
+    +'<p class="hint">번호별 직전 대비 상태와 연속 누락 횟수입니다. 감시번호 클릭 시 복사됩니다.</p>'
+    +'<table><thead><tr><th>감시번호</th><th>직전 대비</th><th>연속 누락</th></tr></thead><tbody>';
+  for(const a of analysis){
+    const tagHtml=a.status==='new'?'<span class="tag new">신규</span>'
+      :a.status==='persist'?'<span class="tag persist">지속</span>'
+      :'<span class="tag resolved">최초 회차</span>';
+    const hot=a.streak>=4?' hot':'';
+    html+='<tr><td class="mono click" onclick="copyText(\''+esc(a.no)+'\',null)" title="클릭하면 복사">'
+      +esc(a.no)+'</td><td>'+tagHtml+'</td>'
+      +'<td><span class="tag streak'+hot+'">'+a.streak+'회</span></td></tr>';
+  }
+  html+='</tbody></table>';
+  if(resolved.length>0){
+    html+='<div class="divider"></div>'
+      +'<p class="hint">✅ 해결됨 · '+resolved.length+'건 — 직전 회차엔 공란이었으나 이번엔 정상으로 잡힌 번호:</p>'
+      +'<div class="result-string">'+esc(resolved.join(' '))+'</div>';
+  }
+  html+='</div>';
+
+  // ── 4. 전체 회차 기록 ──
+  html+='<div class="panel"><h2>전체 회차 기록</h2>'
+    +'<table><thead><tr><th>회차</th><th>이름</th><th>종류</th><th>companyNo</th><th>날짜</th><th>공란 수</th><th></th></tr></thead><tbody>';
+  for(const s of sessions.slice().reverse()){
+    html+='<tr><td>'+s.round+'</td><td>'+esc(s.label)+'</td>'
+      +'<td><span class="tag kind">'+kindLabel(s.kind||'sns')+'</span></td>'
+      +'<td class="mono">'+esc(s.companyNo||'—')+'</td>'
+      +'<td class="mono">'+esc(s.date)+'</td><td>'+s.blanks.length+'건</td>'
+      +'<td><button class="ghost tiny" style="color:var(--berry-deep);" onclick="deleteSession('+s.round+')">삭제</button></td></tr>';
+  }
+  html+='</tbody></table></div>';
+
+  // ── 5. 백업 / 복원 ──
+  html+='<div class="panel"><h2>백업 / 복원</h2>'
+    +'<p class="hint">회차 데이터는 이 브라우저에만 저장됩니다. 다른 PC로 옮기거나 안전하게 '
+    +'보관하려면 JSON으로 내보내세요. 파일을 옮기거나 브라우저 데이터를 지우면 기록이 사라집니다.</p>'
+    +'<div class="row" style="align-items:center;"><button class="ghost" onclick="exportJSON()">⬇ JSON 백업 내보내기</button>'
+    +'<label class="ghost" style="background:var(--milk-deep);color:var(--berry-text);'
+    +'padding:10px 18px;border-radius:10px;font-size:.88rem;cursor:pointer;">⬆ JSON 불러오기'
+    +'<input type="file" accept="application/json" onchange="importJSON(event)" style="display:none;"></label></div></div>';
+
+  root.innerHTML=html;
+}
+
+// ================= 초기화 =================
+(function init(){
+  const pref=loadPref();
+  if(pref.kind) kind=pref.kind;
+  if(pref.companyNo) document.getElementById('companyNo').value=pref.companyNo;
+  setKind(kind);
+  setMode('console');
+  refreshPreview();
+
+  // 구버전(v2~v3) 데이터 감지 — kind 정보 없는 회차가 있으면 1회 안내
+  const legacy=sessions.some(s=>!s.kind);
+  if(legacy && !loadPref().legacyAck){
+    setTimeout(()=>{
+      const wipe=confirm(
+        '이전 버전에서 저장된 회차 데이터가 있습니다.\n'
+        +'구버전 회차에는 감시 종류(SNS/Store) 정보가 없어 모두 "SNS"로 간주됩니다.\n'
+        +'만약 Store 회차가 섞여 있었다면 신규/지속 비교가 부정확해집니다.\n\n'
+        +'[확인] 기존 데이터를 모두 비우고 깨끗하게 시작\n'
+        +'[취소] 그대로 사용 (이 안내는 다시 뜨지 않음)');
+      if(wipe){
+        sessions=[];
+        saveSessions(sessions);
+        flash('기존 회차 데이터를 비웠습니다');
+        renderHistory();
+      }
+      const p=loadPref(); p.legacyAck=true; savePref(p);
+    },400);
+  }
+})();
+</script>
+</body>
+</html>
