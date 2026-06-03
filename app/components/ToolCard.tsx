@@ -7,6 +7,7 @@ import {
   Radar,
   Cat,
   Flame,
+  Database,
 } from "lucide-react";
 
 type ToolCardProps = {
@@ -40,6 +41,7 @@ export default function ToolCard({
     pizza: Pizza,
     flask: FlaskConical,
     cat: Cat,
+    database: Database,
   };
 
   const Icon = icon
