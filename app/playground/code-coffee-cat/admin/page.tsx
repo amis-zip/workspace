@@ -6,8 +6,10 @@ import { initialCats } from "../data";
 
 type Vote = {
   user_id?: string;
+  voter_id?: string;
   mascot_ids: string[];
   apparel_types: string[];
+  created_at?: string;
   updated_at?: string;
 };
 
@@ -21,20 +23,30 @@ export default function AdminPage() {
   const [votes, setVotes] = useState<Vote[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [debugError, setDebugError] = useState<string | null>(null);
 
   const fetchVotes = async () => {
+    setLoading(true);
+    setDebugError(null);
+
     const { data, error } = await supabase
       .from("votes")
-      .select("user_id, mascot_ids, apparel_types, updated_at")
-      .order("updated_at", { ascending: false });
+      .select(
+        "user_id, voter_id, mascot_ids, apparel_types, created_at, updated_at"
+      )
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("SUPABASE ADMIN ERROR:", error);
       setVotes([]);
+      setDebugError(error.message);
+      setLoading(false);
       return;
     }
 
-    setVotes(data || []);
+    console.log("ADMIN VOTES:", data);
+
+    setVotes((data || []) as Vote[]);
     setLastUpdated(new Date().toLocaleTimeString());
     setLoading(false);
   };
@@ -75,8 +87,7 @@ export default function AdminPage() {
 
       if (!apparel) return;
 
-      counts[apparel] =
-        (counts[apparel] || 0) + 1;
+      counts[apparel] = (counts[apparel] || 0) + 1;
     });
 
     return counts;
@@ -142,6 +153,18 @@ export default function AdminPage() {
           </div>
         </section>
 
+        {debugError && (
+          <section className="mb-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-red-300">
+              Supabase Admin Error
+            </p>
+
+            <p className="mt-2 text-sm text-red-200">
+              {debugError}
+            </p>
+          </section>
+        )}
+
         <section className="grid md:grid-cols-4 gap-4 mb-14">
           <div className="rounded-3xl border border-white/10 bg-zinc-950 p-6">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
@@ -155,13 +178,11 @@ export default function AdminPage() {
 
           <div className="rounded-3xl border border-white/10 bg-zinc-950 p-6">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Last Vote
+              Mascot Selections
             </p>
 
-            <h3 className="mt-4 text-lg font-semibold">
-              {lastVote?.updated_at
-                ? new Date(lastVote.updated_at).toLocaleString()
-                : "-"}
+            <h3 className="mt-4 text-5xl font-semibold">
+              {totalMascotVotes}
             </h3>
           </div>
 
@@ -172,6 +193,20 @@ export default function AdminPage() {
 
             <h3 className="mt-4 text-5xl font-semibold">
               {totalApparelVotes}
+            </h3>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-zinc-950 p-6">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Last Vote
+            </p>
+
+            <h3 className="mt-4 text-sm font-semibold leading-relaxed text-zinc-300">
+              {lastVote?.updated_at || lastVote?.created_at
+                ? new Date(
+                    lastVote.updated_at || lastVote.created_at || ""
+                  ).toLocaleString()
+                : "-"}
             </h3>
           </div>
         </section>
@@ -215,7 +250,7 @@ export default function AdminPage() {
             {topApparel && topApparel[1] > 0 ? (
               <div className="mt-6">
                 <h2 className="text-3xl font-semibold">
-                  {apparelLabels[topApparel[0]]}
+                  {apparelLabels[topApparel[0]] || topApparel[0]}
                 </h2>
 
                 <p className="mt-2 text-zinc-500">
@@ -247,10 +282,10 @@ export default function AdminPage() {
                 ? (cat.count / totalMascotVotes) * 100
                 : 0;
 
-                const cardClass =
-                  index === 0
-                    ? "border-white/20 bg-zinc-900"
-                    : "border-white/10 bg-zinc-950";
+              const cardClass =
+                index === 0 && cat.count > 0
+                  ? "border-white/20 bg-zinc-900"
+                  : "border-white/10 bg-zinc-950";
 
               return (
                 <div
@@ -259,7 +294,6 @@ export default function AdminPage() {
                 >
                   <div className="flex items-center justify-between mb-5 gap-4">
                     <div className="flex items-center gap-5">
-
                       <img
                         src={cat.image}
                         alt={cat.name}
@@ -278,11 +312,9 @@ export default function AdminPage() {
                     </div>
 
                     <div className="text-right">
-                      <p className="text-4xl mb-3">🏆</p>
-
-                      <h2 className="text-4xl font-semibold tracking-wide">
+                      <p className="text-3xl font-semibold">
                         {cat.count}
-                      </h2>
+                      </p>
 
                       <p className="text-xs text-zinc-500 mt-1">
                         votes
@@ -329,7 +361,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between mb-5">
                     <div>
                       <h3 className="text-xl font-semibold">
-                        {apparelLabels[id]}
+                        {apparelLabels[id] || id}
                       </h3>
 
                       <p className="text-sm text-zinc-500">
