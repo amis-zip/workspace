@@ -32,12 +32,23 @@ type VoteRow = {
   voter_id: string;
   mascot_ids: string[];
   apparel_types: string[];
+  team?: string;
   updated_at?: string;
 };
 
 export default function CodeCoffeeCatPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [apparelType, setApparelType] = useState<string | null>(null);
+  const teams = [
+  "Development",
+  "Operations",
+  "Design",
+  "Marketing",
+  "Sales",
+  "Management",
+  "Other",
+];
+  const [team, setTeam] = useState("");
   const [hasVoted, setHasVoted] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -72,7 +83,7 @@ export default function CodeCoffeeCatPage() {
     const { data, error } = await supabase
       .from("votes")
       .select(
-        "user_id, voter_id, mascot_ids, apparel_types, updated_at"
+        "user_id, voter_id, mascot_ids, apparel_types, team, updated_at"
       )
       .eq("user_id", userId)
       .maybeSingle();
@@ -90,6 +101,7 @@ export default function CodeCoffeeCatPage() {
     setSelectedIds(voteData.mascot_ids || []);
     setApparelType(voteData.apparel_types?.[0] || null);
     setHasVoted(true);
+    setTeam(voteData.team || "");
 
     localStorage.setItem(
       USER_VOTE_KEY,
@@ -139,6 +151,7 @@ export default function CodeCoffeeCatPage() {
           voter_id: userId,
           mascot_ids: selectedIds,
           apparel_types: [apparelType],
+          team: team,
           updated_at: new Date().toISOString(),
         },
         {
@@ -182,7 +195,11 @@ export default function CodeCoffeeCatPage() {
   
   if (!mounted) return null;
 
-  const canSubmit = selectedIds.length === 2 && !!apparelType && !loading;
+  const canSubmit =
+    selectedIds.length === 2 &&
+   !!apparelType &&
+   !!team &&
+   !loading;
 
   return (
     <main className="min-h-screen bg-black text-white px-4 md:px-6 py-10">
@@ -215,6 +232,30 @@ export default function CodeCoffeeCatPage() {
           <p className="mb-4 text-[11px] tracking-[0.18em] text-zinc-500 uppercase">
             Apparel Survey
           </p>
+
+        <section className="mb-10">
+          <p className="mb-4 text-[11px] tracking-[0.18em] text-zinc-500 uppercase">
+            Team
+          </p>
+
+          <h2 className="text-2xl font-semibold mb-6">
+            Which team are you in?
+          </h2>
+
+          <select
+            value={team}
+            onChange={(e) => setTeam(e.target.value)}
+            className="w-full rounded-xl bg-zinc-950 border border-white/10 p-4"
+  >
+            <option value="">Select Team</option>
+
+            {teams.map((teamName) => (
+              <option key={teamName} value={teamName}>
+                {teamName}
+              </option>
+            ))}
+          </select>
+        </section>
 
           <h2 className="text-2xl font-semibold mb-6">
             What would you actually wear?

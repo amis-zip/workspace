@@ -8,6 +8,7 @@ type Vote = {
   voter_id?: string;
   mascot_ids: string[];
   apparel_types: string[];
+  team?: string;
   created_at?: string;
   updated_at?: string;
 };
@@ -23,7 +24,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [debugError, setDebugError] = useState<string | null>(null);
-
   const fetchVotes = async () => {
     setLoading(true);
     setDebugError(null);
@@ -89,6 +89,19 @@ export default function AdminPage() {
     return counts;
   }, [votes]);
 
+  const teamCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+
+    votes.forEach((vote) => {
+      if (!vote.team) return;
+
+      counts[vote.team] =
+        (counts[vote.team] || 0) + 1;
+   });
+
+   return counts;
+  }, [votes]);
+
   const totalMascotVotes = Object.values(mascotCounts).reduce(
     (a, b) => a + b,
     0
@@ -97,6 +110,10 @@ export default function AdminPage() {
   const totalApparelVotes = Object.values(apparelCounts).reduce(
     (a, b) => a + b,
     0
+  );
+
+  const sortedTeams = Object.entries(teamCounts).sort(
+    (a, b) => b[1] - a[1]
   );
 
   const sortedMascots = initialCats
@@ -372,6 +389,67 @@ export default function AdminPage() {
 
                       <p className="text-xs text-zinc-500 mt-1">
                         votes
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="h-2 rounded-full bg-zinc-900 overflow-hidden">
+                    <div
+                      className="h-full bg-white transition-all duration-700"
+                      style={{
+                        width: `${percentage}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+                <section className="mb-20">
+          <div className="mb-8">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Team Participation
+            </p>
+
+            <h2 className="mt-3 text-4xl font-semibold">
+              Department Breakdown
+            </h2>
+
+            <p className="mt-3 text-zinc-500">
+              Total participants: {votes.length}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {sortedTeams.map(([team, count]) => {
+              const percentage = votes.length
+                ? (count / votes.length) * 100
+                : 0;
+
+              return (
+                <div
+                  key={team}
+                  className="rounded-3xl border border-white/10 bg-zinc-950 p-6"
+                >
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h3 className="text-xl font-semibold">
+                        {team}
+                      </h3>
+
+                      <p className="text-sm text-zinc-500">
+                        {percentage.toFixed(1)}%
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-3xl font-semibold">
+                        {count}
+                      </p>
+
+                      <p className="text-xs text-zinc-500 mt-1">
+                        participants
                       </p>
                     </div>
                   </div>

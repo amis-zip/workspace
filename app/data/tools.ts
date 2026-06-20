@@ -1,6 +1,15 @@
 export const faikerzTools = [
 
   {
+    title: "Copyright Operations",
+    description: "SNS review & monitoring schedule dashboard",
+    href: "/faikerz/copyright-operations",
+    color: "red",
+    badge: "NEW",
+   icon: "shield",
+  },
+
+  {
     title: "Market Data Extractor",
     description: "marketplace product data extraction tool",
     href: "https://market-data-extractor.vercel.app",
