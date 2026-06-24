@@ -73,10 +73,14 @@ function getDday(date: Date | null) {
   return Math.ceil((target.getTime() - today.getTime()) / 86400000);
 }
 
-function getWorkstream(category: string, workType: string) {
+function getWorkstream(
+  category: string,
+  workType: string
+): Task["workstream"] {
   const text = `${category} ${workType}`.toLowerCase();
 
   if (text.includes("sns")) return "SNS";
+
   if (
     text.includes("정기") ||
     text.includes("모니터링") ||
@@ -148,7 +152,9 @@ export default function CopyrightDashboardClient() {
         const workbook = XLSX.read(arrayBuffer, { type: "array" });
 
         const sheetName =
+          workbook.SheetNames.find((name) => name.includes("6월_업무마스터")) ||
           workbook.SheetNames.find((name) => name.includes("업무마스터")) ||
+          workbook.SheetNames.find((name) => name.includes("마스터")) ||
           workbook.SheetNames.find((name) => name.includes("데드라인")) ||
           workbook.SheetNames[0];
 
@@ -165,12 +171,29 @@ export default function CopyrightDashboardClient() {
 
         const headerIndex = stringRows.findIndex((row) => {
           const joined = row.join(" ");
-          return joined.includes("구분") && joined.includes("고객사");
-        });
 
-        if (headerIndex === -1) {
-          throw new Error("Could not find the header row in the Excel file.");
-        }
+            const hasCategory = joined.includes("구분");
+            const hasClient =
+              joined.includes("고객사") ||
+              joined.includes("브랜드") ||
+              joined.includes("고객");
+
+            const hasWorkInfo =
+              joined.includes("업무") ||
+              joined.includes("데드라인") ||
+              joined.includes("목표") ||
+              joined.includes("탐지");
+
+            return hasCategory && hasClient && hasWorkInfo;
+          });
+
+          if (headerIndex === -1) {
+            console.log("Sheet names:", workbook.SheetNames);
+            console.log("Current sheet:", sheetName);
+            console.log("Preview rows:", stringRows.slice(0, 20));
+
+            throw new Error("Could not find the header row in the Excel file.");
+          }
 
         const headers = stringRows[headerIndex];
 
@@ -183,7 +206,7 @@ export default function CopyrightDashboardClient() {
         const platformCol = findColumn(headers, ["탐지", "국가", "플랫폼"]);
         const noteCol = findColumn(headers, ["비고", "메모"]);
 
-        const parsedTasks = stringRows
+        const parsedTasks: Task[] = stringRows
           .slice(headerIndex + 1)
           .map((row, index) => {
             const getValue = (columnIndex: number) =>
