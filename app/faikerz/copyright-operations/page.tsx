@@ -1,11 +1,12 @@
 import Navbar from "../../components/Navbar";
+import CopyrightDashboardClient from "./CopyrightDashboardClient";
 
 export default function CopyrightOperationsPage() {
   return (
     <main className="min-h-screen bg-black text-white px-4 md:px-6 py-10">
       <Navbar />
 
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <a
           href="/faikerz"
           className="inline-block mb-8 text-sm text-zinc-600 hover:text-white transition"
@@ -30,11 +31,9 @@ export default function CopyrightOperationsPage() {
           <div className="mt-8 flex flex-wrap gap-3">
             <a
               href="/faikerz/copyright-operations/view"
-              target="_blank"
-              rel="noopener noreferrer"
               className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-zinc-200 transition"
             >
-              Open Excel Viewer
+              Open Original Viewer
             </a>
 
             <a
@@ -79,21 +78,7 @@ export default function CopyrightOperationsPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-zinc-950 p-6">
-          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-            Source File
-          </p>
-
-          <h2 className="mt-4 text-2xl font-semibold">
-            [저작권] 일정_6월(v5).xlsx
-          </h2>
-
-          <p className="mt-3 text-sm leading-relaxed text-zinc-500">
-            The original Excel file is kept as the source of truth for now.
-            Future versions can parse this file into a live dashboard with
-            deadline alerts, status filters, and weekly workload summaries.
-          </p>
-        </section>
+        <CopyrightDashboardClient />
       </div>
     </main>
   );
