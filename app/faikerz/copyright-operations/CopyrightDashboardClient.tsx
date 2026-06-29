@@ -132,6 +132,13 @@ function getDdayClass(dday: number | null) {
   return "border-white/10 text-zinc-400";
 }
 
+function getTaskTitle(task: Task) {
+  if (task.client) return task.client;
+  if (task.category) return task.category;
+
+  return "Unlabeled Copyright Task";
+}
+
 export default function CopyrightDashboardClient() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
@@ -198,7 +205,7 @@ export default function CopyrightDashboardClient() {
         const headers = stringRows[headerIndex];
 
         const categoryCol = findColumn(headers, ["구분"]);
-        const clientCol = findColumn(headers, ["고객사"]);
+        const clientCol = findColumn(headers, ["고객사", "브랜드", "고객"]);
         const workTypeCol = findColumn(headers, ["업무 유형", "업무유형"]);
         const cycleCol = findColumn(headers, ["주기", "기간"]);
         const deadlineCol = findColumn(headers, ["데드라인", "마감"]);
@@ -206,57 +213,73 @@ export default function CopyrightDashboardClient() {
         const platformCol = findColumn(headers, ["탐지", "국가", "플랫폼"]);
         const noteCol = findColumn(headers, ["비고", "메모"]);
 
-        const parsedTasks: Task[] = stringRows
-          .slice(headerIndex + 1)
-          .map((row, index) => {
-            const getValue = (columnIndex: number) =>
-              columnIndex >= 0 ? row[columnIndex] || "" : "";
+let lastCategory = "";
+let lastClient = "";
+let lastWorkType = "";
+let lastCycle = "";
 
-            const category = getValue(categoryCol);
-            const client = getValue(clientCol);
-            const workType = getValue(workTypeCol);
-            const cycle = getValue(cycleCol);
-            const deadline = getValue(deadlineCol);
-            const target = getValue(targetCol);
-            const platform = getValue(platformCol);
-            const note = getValue(noteCol);
+const parsedTasks: Task[] = stringRows
+  .slice(headerIndex + 1)
+  .map((row, index) => {
+    const getValue = (columnIndex: number) =>
+      columnIndex >= 0 ? row[columnIndex] || "" : "";
 
-            const dueDate = parseDueDate(deadline);
-            const dday = getDday(dueDate);
-            const workstream = getWorkstream(category, workType);
-            const needsCheck = isCheckNeeded({
-              category,
-              deadline,
-              target,
-              platform,
-              note,
-            });
+    const rawCategory = getValue(categoryCol);
+    const rawClient = getValue(clientCol);
+    const rawWorkType = getValue(workTypeCol);
+    const rawCycle = getValue(cycleCol);
 
-            return {
-              id: `${sheetName}-${index}`,
-              category,
-              client,
-              workType,
-              cycle,
-              deadline,
-              target,
-              platform,
-              note,
-              workstream,
-              dueDate,
-              dday,
-              needsCheck,
-            };
-          })
-          .filter((task) => {
-            return (
-              task.client ||
-              task.workType ||
-              task.deadline ||
-              task.target ||
-              task.note
-            );
-          });
+    if (rawCategory) lastCategory = rawCategory;
+    if (rawClient) lastClient = rawClient;
+    if (rawWorkType) lastWorkType = rawWorkType;
+    if (rawCycle) lastCycle = rawCycle;
+
+    const category = rawCategory || lastCategory;
+    const client = rawClient || lastClient;
+    const workType = rawWorkType || lastWorkType;
+    const cycle = rawCycle || lastCycle;
+    const deadline = getValue(deadlineCol);
+    const target = getValue(targetCol);
+    const platform = getValue(platformCol);
+    const note = getValue(noteCol);
+
+    const dueDate = parseDueDate(deadline);
+    const dday = getDday(dueDate);
+    const workstream = getWorkstream(category, workType);
+    const needsCheck = isCheckNeeded({
+      category,
+      deadline,
+      target,
+      platform,
+      note,
+    });
+
+    return {
+      id: `${sheetName}-${index}`,
+      category,
+      client,
+      workType,
+      cycle,
+      deadline,
+      target,
+      platform,
+      note,
+      workstream,
+      dueDate,
+      dday,
+      needsCheck,
+    };
+  })
+  .filter((task) => {
+    return (
+      task.client ||
+      task.workType ||
+      task.deadline ||
+      task.target ||
+      task.note
+    );
+  });
+
 
         setTasks(parsedTasks);
       } catch (err) {
@@ -478,11 +501,13 @@ function TaskCard({ task }: { task: Task }) {
           </div>
 
           <h3 className="text-xl font-semibold">
-            {task.client || "Untitled Task"}
+            {getTaskTitle(task)}
           </h3>
 
           {task.workType && (
-            <p className="mt-2 text-sm text-zinc-500">{task.workType}</p>
+            <p className="mt-2 text-sm text-zinc-500">
+              {task.workType}
+            </p>
           )}
         </div>
 
